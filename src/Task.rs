@@ -1,6 +1,6 @@
 use super::*;
 
-pub async fn Create_Progress(id: String, Username: String, Type: String, Progress: String) -> String {
+pub async fn Create_Progress(id: String, Username: String, Type: String, Progress: String)  {
     let connection = establish_connection().await;
     let progress = v_task::ActiveModel {
         id: ActiveValue::Set(id),
@@ -10,11 +10,9 @@ pub async fn Create_Progress(id: String, Username: String, Type: String, Progres
     };
 
     let progress: v_task::Model = progress.insert(&connection).await.unwrap();
-
-    return "Success".to_string();
 }
 
-pub async fn Update_Progress(PublicId: String, progress: String) -> String {
+pub async fn Update_Progress(PublicId: String, progress: String)  {
     let connection = establish_connection().await;
 
     let task: Option<v_task::Model> = v_task::Entity::find_by_id(&PublicId.to_owned())
@@ -27,8 +25,6 @@ pub async fn Update_Progress(PublicId: String, progress: String) -> String {
     task.progress = Set(progress.to_owned());
 
     let task: v_task::Model = task.update(&connection).await.unwrap();
-    
-    return "Success".to_string();
 }
 
 
