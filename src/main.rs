@@ -240,14 +240,14 @@ async fn main() {
     // Converts Rstring to Config Struct then get the url from the struct
     let read_config: Config = toml::from_str(&Cstring).unwrap();
     let file_size = read_config.Core.file_size_limit.parse::<usize>().unwrap();
-    let front_end_url = read_config.Core.front_end_url.to_string();
+    let front_end_url = read_config.Core.front_end_url;
 
 
-    let feed_cors_url = front_end_url.to_owned() + "Feed";
+    let feed_cors_url = front_end_url.join("Feed").unwrap();
 
     let origins = [
-        front_end_url.parse::<HeaderValue>().unwrap(),
-        feed_cors_url.parse::<HeaderValue>().unwrap(),
+        front_end_url.as_str().parse::<HeaderValue>().unwrap(),
+        feed_cors_url.as_str().parse::<HeaderValue>().unwrap(),
     ];
 
     // Core Settings
