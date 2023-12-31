@@ -16,14 +16,17 @@ Required command line tools
 
 ## Install
 
-`git clone PUTURLHERE `
+### Source
+
+`git clone https://github.com/SelectSweet/Varied.git `
 
 
 ## Config
 
+in the varied.toml file follow the comments given for config instructions
 
 
-
+## Run
 
 `sea-orm-cli migrate up`
 
