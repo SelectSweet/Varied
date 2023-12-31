@@ -1,0 +1,34 @@
+[package]
+name = "varied"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[workspace]
+members = [
+    ".",
+    "migration",
+    "entity"
+]
+
+[dependencies]
+migration = { path = "migration" }
+entity = { path = "entity" }
+sea-orm = { version = "0.12.4", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid", "postgres-array" ] }
+serde = { version = "1.0.192", features = [ "derive" ] }
+toml = { version = "0.8.8", features = [ "parse" ] }
+axum = { version = "0.6.20", features =  ["multipart", "headers", "query", "json", "macros", "form", "tokio"]}
+axum-extra = { version = "0.7.7", features = ["cookie", "cookie-private", "form"] }
+tokio = { version = "1.33.0", features = ['full'] }
+tower-http = { version = "0.4.4", features = ["full"] }
+serde_json = "1.0.108"
+url = { version = "2.4.1", features = ["serde"] }
+uuid = "1.5.0"
+argon2 = "0.5.2"
+base64 = "0.21.5"
+chrono = "0.4.31"
+rand = "0.8.5"
+ffmpeg-sidecar = "0.5.1"
+sea-query = "0.30.4"
+sqids = "0.3.1"
