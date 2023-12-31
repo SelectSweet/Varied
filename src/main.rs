@@ -82,7 +82,7 @@ pub struct RClone {
 
 #[derive(Deserialize)]
 pub struct Core {
-    file_size_limit: usize,
+    file_size_limit: String,
     front_end_url: Url
 }
 
@@ -239,7 +239,7 @@ async fn main() {
 
     // Converts Rstring to Config Struct then get the url from the struct
     let read_config: Config = toml::from_str(&Cstring).unwrap();
-    let file_size = read_config.Core.file_size_limit;
+    let file_size = read_config.Core.file_size_limit.parse::<usize>().unwrap();
     let front_end_url = read_config.Core.front_end_url.to_string();
 
 
