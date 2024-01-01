@@ -154,14 +154,6 @@ pub async fn UploadVideo(
 
     };
 
-    // let mut BucketKey = String::new();
-    
-
-    // BucketKey.insert(VideoBucket.len(), ':');
-    // BucketKey.insert_str(VideoBucket.len(), &bucket_path);
-
-    // BucketKey.insert_str(0, &VideoBucket);
-
     let bucket_path = VideoBucket.to_owned() + "/" + ID.as_str();
 
     std::fs::remove_dir_all(process_dir).unwrap();
