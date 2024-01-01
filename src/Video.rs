@@ -101,7 +101,7 @@ pub async fn UploadVideo(
 
         let task_init: v_task::Model = task_init.insert(&connection).await.unwrap();
 
-        let mut total_progress = Vec::new();
+        let mut total_progress = String::new();
 
         
         FfmpegCommand::new()
@@ -136,31 +136,33 @@ pub async fn UploadVideo(
     .unwrap()
     .filter_progress()
     .for_each(|progress: FfmpegProgress| {
-        let progress = (progress.frame * 100 / total_frames).to_string() + "%";
+        let progress_value = (progress.frame * 100 / total_frames).to_string() + "%";
+        let progress = progress_value.as_str();
          if total_progress.is_empty() {                    
-           total_progress.push(progress);
+           total_progress.push_str(progress);
 
-           let _progress_result = Create_Progress(PublicId.to_owned(), Username.to_owned(), "Video".to_string(), total_progress[0].to_owned());
+           let _progress_result = Create_Progress(PublicId.to_owned(), Username.to_owned(), "Video".to_string(), total_progress.to_owned());
         
         }
         
         else {
-           total_progress[0] = progress;
+            total_progress.push_str(progress);
 
-           let _progress_result = Update_Progress(PublicId.to_owned(), total_progress[0].to_owned());
-
+            let _progress_result = Update_Progress(PublicId.to_owned(), total_progress.to_owned());
         }
-    });
+    });;
 
     };
 
-    let mut BucketKey = String::new();
+    // let mut BucketKey = String::new();
+    
+
+    // BucketKey.insert(VideoBucket.len(), ':');
+    // BucketKey.insert_str(VideoBucket.len(), &bucket_path);
+
+    // BucketKey.insert_str(0, &VideoBucket);
+
     let bucket_path = VideoBucket.to_owned() + "/" + ID.as_str();
-
-    BucketKey.insert(VideoBucket.len(), ':');
-    BucketKey.insert_str(VideoBucket.len(), &bucket_path);
-
-    BucketKey.insert_str(0, &VideoBucket);
 
     std::fs::remove_dir_all(process_dir).unwrap();
 
@@ -169,14 +171,14 @@ pub async fn UploadVideo(
     Command::new("rclone")
        .arg("move")
        .arg(process_path)
-       .arg(BucketKey)
+       .arg(VideoBucket.to_owned() + ":" + &bucket_path)
        .arg("--delete-empty-src-dirs")
        .output()
        .unwrap();
 
     let mut UploadPaths: Vec<String> = Vec::new();
 
-    let endpoint = RCloneConfig["endpoint"].to_owned();
+    let endpoint = RCloneConfig["Endpoint"].to_owned();
 
 
     UploadPaths.insert(
