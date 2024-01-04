@@ -26,7 +26,6 @@ pub fn AudioFrames(file: &str) -> String {
 #[debug_handler]
 pub async fn UploadAudio(
     cookies: CookieJar,
-    //cookies: CookieJar,
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<(CookieJar, Json<String>), StatusCode> {
@@ -45,8 +44,6 @@ pub async fn UploadAudio(
     let Username = get_session(cookies.clone()).await;
 
     //std::fs::create_dir_all(mount_path.to_owned() + "/" + PublicId.as_str()).unwrap();
-
-    // let tdir = tempdir().unwrap();
 
     let mut Paths: Vec<String> = Vec::new();
     Paths.push(
@@ -85,15 +82,6 @@ pub async fn UploadAudio(
         AudioFile
             .write_all(&data)
             .expect("Data not Written to File");
-
-        // let insert_details = sqlx::query!(
-        //     "INSERT INTO public.Media (id, publicid, title, mediatype, username) VALUES ($1, $2, $3, $4, $5)",
-        //     &ID,
-        //     &PublicId,
-        //     Title,
-        //     media::MediaType::Audio.to_string(),
-        //     &Username
-        // ).execute(&connection).await;
 
         // gets the current datetime
         let now = Utc::now();
@@ -209,18 +197,6 @@ pub async fn UploadAudio(
         //         + ID
         //         + "-320.webm",
         // );
-
-        // let insert_video = sqlx::query!(
-        //     "UPDATE public.Media
-        //     SET storagepathorurl = $1
-        //     , state = $2
-        //     WHERE id = $3;",
-        //     &UploadPaths,
-        //     media::MediaState::Published.to_string(),
-        //     ID
-        // )
-        // .fetch_all(&connection)
-        // .await;
 
         let insert_audio: Option<v_media::Model> = v_media::Entity::find()
             .filter(v_media::Column::Id.eq(ID))
