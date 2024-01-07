@@ -101,7 +101,7 @@ mod Text;
 mod Task;
 mod Video;
 //mod Image;
-//mod Audio;
+mod Audio;
 
 use Task::{Create_Progress, Update_Progress};
 
@@ -276,7 +276,7 @@ async fn main() {
         .route("/api/media", get(Media::ViewMedia))
         .route("/api/text", post(Text::Create_Text))
         .route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
-        //.route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(32212254720))
+        .route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
         .route("/api/feed", get(Feed::feed))
         .route("/api/tasks", get(Task::list_tasks))
         .layer(cors)

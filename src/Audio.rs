@@ -43,11 +43,14 @@ pub async fn UploadAudio(
 
     let Username = get_session(cookies.clone()).await;
 
-    //std::fs::create_dir_all(mount_path.to_owned() + "/" + PublicId.as_str()).unwrap();
+    let process_dir = process.to_owned() + "/" + ID;
+
+    std::fs::create_dir_all(&process_dir).unwrap();
+    std::fs::create_dir_all(process.to_owned() + "/" + &AudioBucket + "/" + ID).unwrap();
 
     let mut Paths: Vec<String> = Vec::new();
     Paths.push(
-        process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + ".flac",
+        process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-High.flac",
     );
     // Paths.push(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
@@ -55,8 +58,6 @@ pub async fn UploadAudio(
     // Paths.push(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
     // );
-
-    let process_dir = process.to_owned() + "/" + ID;
 
     while let Some(field) = multipart.next_field().await.unwrap() {
         let name = field.name().unwrap().to_string();
@@ -70,14 +71,12 @@ pub async fn UploadAudio(
         let InputAudioPath = std::path::Path::new(&file_name);
 
         let AudioFileName = PublicId.as_str().to_owned()
-            + "-"
+            + "."
             + InputAudioPath.extension().unwrap().to_str().unwrap();
 
         let Audio_name = process.to_owned() + "/" + ID + "/" + AudioFileName.as_str();
 
-        let AudioFilePath = std::path::Path::new(&Audio_name);
-
-        let mut AudioFile = File::create(AudioFilePath.as_os_str()).unwrap();
+        let mut AudioFile = File::create(&Audio_name).unwrap();
 
         AudioFile
             .write_all(&data)
@@ -103,64 +102,54 @@ pub async fn UploadAudio(
 
         let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
 
-        let mut total_progress: Vec<String> = Vec::new();
+        let mut total_progress = String::new();
         let total_frames = AudioFrames(Audio_name.as_str()).parse::<u32>().unwrap();
-        println!("Total frame: {}", total_frames);
 
         FfmpegCommand::new()
-            .input(&Audio_name.as_str())
+            .input(Audio_name.as_str())
             .hide_banner()
             .arg("-y")
-            .args(
-                ["-s", "-c:a", "flac", Paths[0].as_str()
-                //"-s", "-c:a", "flac", "",
-                //"-s", "-c:a", "flac", ""
-                ]
-            )
+            .arg(Paths[0].as_str())
+            .print_command()
             .spawn()
             .unwrap()
             .iter()
             .expect("Iter not created")
             .filter_progress()
             .for_each(|progress: FfmpegProgress| {
-                let progress = (progress.frame * 100 / total_frames).to_string() + "%";
+                let progress_value = (progress.frame * 100 / total_frames).to_string() + "%";
+                let progress = progress_value.as_str();
                 if total_progress.is_empty() {
-                    total_progress[0] = progress;
-
+                    total_progress.push_str(progress);
                     let _progress_result = Create_Progress(
                         PublicId.to_owned(),
                         Username.to_owned(),
                         "Audio".to_string(),
-                        total_progress[0].to_owned(),
+                        total_progress.to_owned(),
                     );
                 } else {
-                    total_progress[0] = progress;
-
+                    total_progress.push_str(progress);
                     let _progress_result =
-                        Update_Progress(PublicId.to_owned(), total_progress[0].to_owned());
+                        Update_Progress(PublicId.to_owned(), total_progress.to_owned());
                 }
             });
-        std::fs::remove_dir_all(process_dir.to_owned()).unwrap();
 
-        let mut BucketKey = String::new();
         let bucket_path = AudioBucket.to_owned() + "/" + ID;
 
-        BucketKey.insert(AudioBucket.len(), ':');
-        BucketKey.insert_str(AudioBucket.len(), &bucket_path);
-
-        BucketKey.insert_str(0, &AudioBucket);
+        std::fs::remove_dir_all(&process_dir).unwrap();
 
         let process_path = process.to_owned() + "/" + &AudioBucket + "/" + ID;
         Command::new("rclone")
             .arg("move")
             .arg(process_path)
-            .arg(BucketKey)
+            .arg(AudioBucket.to_owned() + ":" + &bucket_path)
+            .arg("--delete-empty-src-dirs")
             .output()
             .unwrap();
 
         let mut UploadPaths: Vec<String> = Vec::new();
 
-        let endpoint = RCloneConfig["endpoint"].to_owned();
+        let endpoint = RCloneConfig["Endpoint"].to_owned();
 
         UploadPaths.insert(
             0,
@@ -171,7 +160,7 @@ pub async fn UploadAudio(
                 + ID
                 + "/"
                 + ID
-                + ".flac",
+                + "-High.flac",
         );
 
         // UploadPaths.insert(
@@ -212,11 +201,13 @@ pub async fn UploadAudio(
 
         insert_audio.update(&connection).await.unwrap();
 
-        let results = json!({
-            "Result": "Success",
-            "PublicID": PublicId
-        });
+        
     };
 
-    return Ok((cookies, Json("Success".to_string())));
+    let results = json!({
+        "Result": "Success",
+        "PublicID": PublicId
+    });
+
+    return Ok((cookies, Json(results.to_string())));
 }
