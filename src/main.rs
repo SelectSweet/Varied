@@ -29,10 +29,10 @@ use chrono::{NaiveDateTime, Utc};
 use axum::{
     async_trait,
     body::Bytes,
-    extract::{multipart::*, ConnectInfo, Multipart, State, BodyStream, DefaultBodyLimit, Query},
-    headers::{authorization::Bearer, Authorization, HeaderMap},
-    headers::Cookie,
-    TypedHeader,
+    extract::{multipart::*, ConnectInfo, Multipart, State, DefaultBodyLimit, Query},
+    //headers::{authorization::Bearer, Authorization, HeaderMap},
+    //headers::Cookie,
+    //TypedHeader,
     http::{header::*, Method, Request, StatusCode, request::Parts as RequestParts},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, patch, post, options},
@@ -284,5 +284,8 @@ async fn main() {
 
     
     println!("listening on {}", addr);
-    axum::Server::try_bind(&addr).unwrap().serve(app.into_make_service()).await.unwrap();
+
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+
+    axum::serve(listener, app.into_make_service()).await.unwrap()
 }
