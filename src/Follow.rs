@@ -25,11 +25,6 @@ pub async fn list(
     let connection = establish_connection().await;
     let Username = get_session(cookies).await;
 
-    // let list = sqlx::query_as!(
-    //     Following,
-    //     "SELECT * from public.follow WHERE follow_username = $1", Username)
-    // .fetch_one(&connection).await.unwrap();
-
     let list = v_follow::Entity::find()
     .filter(v_follow::Column::Follower.eq(Username))
     .into_json()

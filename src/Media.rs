@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::*;
 
 #[derive(Deserialize, Serialize)]
@@ -14,19 +12,6 @@ pub struct UpdateDetails {
 pub struct ViewDetails {
     pub PublicId: String,
 }
-
-
-// id text NOT NULL,
-//     publicid text NOT NULL,
-//     title text NOT NULL,
-//     mediatype text NOT NULL,
-//     uploaded_at timestamp default (now() at time zone 'utc') NOT NULL,
-//     username text NOT NULL, 
-//     description text,
-//     chapters json,
-//     storagepathorurl text[],
-//     properties json,
-//     state text NOT NULL,
 
 
 #[derive(Deserialize, Serialize, Debug)]

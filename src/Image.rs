@@ -1,10 +1,4 @@
-
-use sea_orm::ColIdx;
-
 use super::*;
-
-
-// add_to_collection=false -F poster=false -F Description="A Black Image
 
 #[derive(TryFromMultipart)]
 pub struct ImageUpload {

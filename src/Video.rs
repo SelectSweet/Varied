@@ -10,7 +10,6 @@ pub fn VideoFrames(file: &str) -> String {
     let out = command.wait_with_output().unwrap().stdout;
     let binding = std::str::from_utf8(&out.to_owned()).unwrap().to_string();
     let OutString = binding.strip_suffix("\n").unwrap();
-    //println!("Frames: {}", OutString);
     return OutString.to_string()
 }
 
@@ -23,8 +22,6 @@ pub async fn UploadVideo(
 ) -> Result<(CookieJar, Json<String>), StatusCode>  {
 
     let connection = establish_connection().await;
-
-    //let c = connection.begin().await.unwrap();
     
     let ID = Uuid::new_v4().to_string();
     let PublicId = make_sqid(random_nums(10).await);
