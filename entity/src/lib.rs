@@ -3,6 +3,7 @@
 pub mod prelude;
 
 pub mod v_account;
+pub mod v_collection;
 pub mod v_follow;
 pub mod v_media;
 pub mod v_session;

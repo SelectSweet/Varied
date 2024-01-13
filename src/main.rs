@@ -46,6 +46,8 @@ use axum_extra::extract::CookieJar;
 use axum_extra::extract::Form;
 use axum_extra::either::Either;
 
+use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
+use tempfile::NamedTempFile;
 
 use tower_http::{
     cors::{Any, CorsLayer, AllowOrigin}, 
@@ -59,10 +61,11 @@ use uuid::Uuid;
 
 use ffmpeg_sidecar::{command::FfmpegCommand, event::FfmpegProgress};
 
+use std::path::Path;
 
 use migration::{Migrator, MigratorTrait};
 
-use entity::{v_account, v_follow, v_media, v_session, v_task};
+use entity::{v_account, v_follow, v_media, v_session, v_task, v_collection};
 
 
 
@@ -99,11 +102,13 @@ mod Login;
 mod Media;
 mod Text;
 mod Task;
-mod Video;
-//mod Image;
-mod Audio;
+//mod Video;
+mod Image;
+//mod Audio;
+mod Collection;
 
 use Task::{Create_Progress, Update_Progress};
+use Collection::{add_to_collection};
 
 
 pub async fn establish_connection() -> DatabaseConnection {
@@ -275,8 +280,10 @@ async fn main() {
         .route("/api/media", patch(Media::UpdateDetails))
         .route("/api/media", get(Media::ViewMedia))
         .route("/api/text", post(Text::Create_Text))
-        .route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
-        .route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
+        //.route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
+        //.route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
+        .route("/api/image", post(Image::UploadImage)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
+        .route("/api/collection", post(Collection::Create_Collection))
         .route("/api/feed", get(Feed::feed))
         .route("/api/tasks", get(Task::list_tasks))
         .layer(cors)
