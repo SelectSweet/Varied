@@ -55,7 +55,7 @@ pub async fn Create_Collection(Json(params): Json<HashMap<String, String>>) -> J
     let title = params["Title"].to_owned();
     let description = Some(params["Description"].to_owned());
     let CollectionType = params["CollectionType"].to_owned();
-    let state = params["MediaType"].to_owned();
+    let state = params["State"].to_owned();
     let properties = json!({
         "Audio": 0,
         "Image": 0,

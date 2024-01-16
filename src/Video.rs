@@ -1,8 +1,20 @@
+use crate::Image::ProcessImages;
+
 use super::*;
 
 pub fn VideoFrames(file: &str) -> String {
     let command = Command::new("ffprobe")
-        .args([ "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0"])
+        .args([
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-count_packets",
+            "-show_entries",
+            "stream=nb_read_packets",
+            "-of",
+            "csv=p=0",
+        ])
         .arg(file)
         .stdout(Stdio::piped())
         .spawn()
@@ -10,98 +22,211 @@ pub fn VideoFrames(file: &str) -> String {
     let out = command.wait_with_output().unwrap().stdout;
     let binding = std::str::from_utf8(&out.to_owned()).unwrap().to_string();
     let OutString = binding.strip_suffix("\n").unwrap();
-    return OutString.to_string()
+    return OutString.to_string();
 }
 
+#[derive(TryFromMultipart)]
+pub struct VideoUpload {
+    #[form_data(limit = "unlimited")]
+    pub video: FieldData<NamedTempFile>,
+
+    #[form_data(limit = "unlimited")]
+    pub poster: Option<FieldData<NamedTempFile>>,
+
+    pub addtocollection: bool,
+    pub addtoalbum: bool,
+    pub title: Option<String>,
+    pub Description: Option<String>,
+    pub CollectionId: Option<String>,
+}
 
 #[debug_handler]
 pub async fn UploadVideo(
     cookies: CookieJar,
-    headers: HeaderMap,
-    mut multipart: Multipart,
-) -> Result<(CookieJar, Json<String>), StatusCode>  {
-
+    TypedMultipart(VideoUpload {
+        video,
+        poster,
+        addtocollection,
+        addtoalbum,
+        title,
+        Description,
+        CollectionId,
+    }): TypedMultipart<VideoUpload>, //mut multipart: Multipart,
+) -> Result<(CookieJar, Json<String>), StatusCode> {
     let connection = establish_connection().await;
-    
+
     let ID = Uuid::new_v4().to_string();
     let PublicId = make_sqid(random_nums(10).await);
     let mut Title = String::new();
     let RCloneConfig = get_rclone_config();
 
-    let process = RCloneConfig["Process"].to_owned();   
-    
+    let name = video.metadata.file_name.unwrap();
+    let filetype = video.metadata.content_type.unwrap();
+    let path = Path::new("/tmp").join(name.to_owned());
+    let mut details: HashMap<String, String> = HashMap::new();
+
+    details.insert("Ids".to_owned(), PublicId.to_owned());
+    details.insert("Type".to_owned(), "Video".to_string());
+
+    if CollectionId.is_some() {
+        details.insert("Collection_Id".to_owned(), CollectionId.to_owned().unwrap());
+    }
+
+    if addtoalbum == true {
+        details.insert("AddToAlbum".to_owned(), true.to_string());
+    }
+
+    video.contents.persist(path.to_owned()).unwrap();
+
+    let process = RCloneConfig["Process"].to_owned();
+
     let VideoBucket = RCloneConfig["Name"].to_owned();
-    
-    
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
+
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
 
     let mut Paths: Vec<String> = Vec::new();
 
-    Paths.push(process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str() + "/" + ID.as_str() + "-320.webm");
-    Paths.push(process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str() + "/" + ID.as_str() + "-720.webm");
-    Paths.push(process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str() + "/" + ID.as_str() + "-1280.webm");
+    Paths.push(
+        process.to_owned()
+            + "/"
+            + &VideoBucket
+            + "/"
+            + ID.as_str()
+            + "/"
+            + ID.as_str()
+            + "-320.webm",
+    );
+    Paths.push(
+        process.to_owned()
+            + "/"
+            + &VideoBucket
+            + "/"
+            + ID.as_str()
+            + "/"
+            + ID.as_str()
+            + "-720.webm",
+    );
+    Paths.push(
+        process.to_owned()
+            + "/"
+            + &VideoBucket
+            + "/"
+            + ID.as_str()
+            + "/"
+            + ID.as_str()
+            + "-1280.webm",
+    );
 
-    let process_dir = process.to_owned() + "/" + ID.as_str();
+    //let process_dir = process.to_owned() + "/" + ID.as_str();
 
-    std::fs::create_dir_all(&process_dir).unwrap();
+    //std::fs::create_dir_all(&process_dir).unwrap();
     std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str()).unwrap();
 
-    while let Some(field) = multipart.next_field().await.unwrap() {
-        let file_name = field.file_name().unwrap().to_string();
-        let data = field.bytes().await.unwrap();
-        
-        if Title == "" {
-           Title.push_str(file_name.as_str())
-        }        
- 
-        let InputVideoPath = std::path::Path::new(&file_name);
+    if title.is_none() {
+       Title.push_str(name.as_str())
+    }
 
-        let VideoFileName = ID.as_str().to_owned() + "." + InputVideoPath.extension().unwrap().to_str().unwrap(); 
+    // let InputVideoPath = std::path::Path::new(&name);
 
-        let video_name = process.to_owned() + "/" + ID.as_str() + "/" + VideoFileName.as_str();
+    // let VideoFileName =
+    //     ID.as_str().to_owned() + "." + InputVideoPath.extension().unwrap().to_str().unwrap();
 
-        let VideoFilePath = std::path::Path::new(&video_name);
+    let video_name = path.as_path().to_str().unwrap().to_string();
 
-        let mut VideoFile = File::create(VideoFilePath.as_os_str()).unwrap();
+    // gets the current datetime
+    let now = Utc::now();
 
-        VideoFile.write(&data).unwrap();
+    let Poster = String::new();
 
-        // gets the current datetime
-        let now = Utc::now();
+    if poster.is_some() {
+        // return image
+        let Poster = ProcessImages(
+            TypedMultipart(Image::ImageUpload {
+                image: poster.unwrap(),
+                addtocollection: addtocollection,
+                addtoalbum: false,
+                Description: None,
+                CollectionId: None,
+            }),
+            Username.to_owned(),
+            true,
+        )
+        .await;
+    }
 
-        let insert_details = v_media::ActiveModel { 
-            id: ActiveValue::Set(ID.to_owned()), 
-            publicid: ActiveValue::Set(PublicId.to_owned()), 
-            title: ActiveValue::Set(Title.to_owned()), 
-            mediatype: ActiveValue::Set(Media::MediaType::Video.to_string()), 
-            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
-            username: ActiveValue::Set(Username.to_owned()), 
-            description: ActiveValue::NotSet, 
+    if addtocollection == true && CollectionId.is_some() {
+        let insert_details = v_media::ActiveModel {
+            id: ActiveValue::Set(ID.to_owned()),
+            publicid: ActiveValue::Set(PublicId.to_owned()),
+            title: ActiveValue::Set(Title.to_owned()),
+            mediatype: ActiveValue::Set(Media::MediaType::Video.to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(Username.to_owned()),
+            description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::NotSet, 
-            properties: ActiveValue::NotSet, 
-            state: ActiveValue::Set(Media::MediaState::Uploading.to_string())
+            storagepathorurl: ActiveValue::NotSet,
+            properties: ActiveValue::NotSet,
+            state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
 
         insert_details.insert(&connection).await.unwrap();
 
-        let total_frames = VideoFrames(&video_name.clone()).parse::<u32>().unwrap();
-       
+        let collection = add_to_collection(details).await;
 
-        let task_init = v_task::ActiveModel { 
-            id: ActiveValue::Set(PublicId.to_owned()), 
-            username: ActiveValue::Set(Username.to_owned()), 
-            r#type: ActiveValue::Set("Video upload".to_string()), 
-            progress: ActiveValue::Set("0%".to_string())
+        let result = json!({
+            "Result": "Success",
+            "Publicid": PublicId.to_owned(),
+            "Collection_Publicid": collection["Publicid"]
+        });
+
+        return Ok((cookies, Json(result.to_string())));
+    }
+
+    if addtocollection == false {
+        let insert_details = v_media::ActiveModel {
+            id: ActiveValue::Set(ID.to_owned()),
+            publicid: ActiveValue::Set(PublicId.to_owned()),
+            title: ActiveValue::Set(Title.to_owned()),
+            mediatype: ActiveValue::Set(Media::MediaType::Video.to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(Username.to_owned()),
+            description: ActiveValue::NotSet,
+            chapters: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::NotSet,
+            properties: ActiveValue::NotSet,
+            state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
 
-        let task_init: v_task::Model = task_init.insert(&connection).await.unwrap();
+        insert_details.insert(&connection).await.unwrap();
 
-        let mut total_progress = String::new();
+    } else {
+        let result = json!({
+            "Result": "Failure",
+            "Publicid": PublicId.to_owned()
+        });
 
-        
-        FfmpegCommand::new()
+        return Ok((cookies, Json(result.to_string())));
+    }
+
+    let total_frames = VideoFrames(&video_name.clone()).parse::<u32>().unwrap();
+
+    let task_init = v_task::ActiveModel {
+        id: ActiveValue::Set(PublicId.to_owned()),
+        username: ActiveValue::Set(Username.to_owned()),
+        r#type: ActiveValue::Set("Video upload".to_string()),
+        progress: ActiveValue::Set("0%".to_string()),
+    };
+
+    let task_init: v_task::Model = task_init.insert(&connection).await.unwrap();
+
+    let mut total_progress = String::new();
+
+    FfmpegCommand::new()
         .input(video_name.clone().as_str())
         .hide_banner()
         .arg("-y")
@@ -128,64 +253,90 @@ pub async fn UploadVideo(
             "libvpx-vp9",
             Paths[2].as_str(),
         ])
-    .spawn().unwrap()
-    .iter()
-    .unwrap()
-    .filter_progress()
-    .for_each(|progress: FfmpegProgress| {
-        let progress_value = (progress.frame * 100 / total_frames).to_string() + "%";
-        let progress = progress_value.as_str();
-         if total_progress.is_empty() {                    
-           total_progress.push_str(progress);
+        .spawn()
+        .unwrap()
+        .iter()
+        .unwrap()
+        .filter_progress()
+        .for_each(|progress: FfmpegProgress| {
+            let progress_value = (progress.frame * 100 / total_frames).to_string() + "%";
+            let progress = progress_value.as_str();
+            if total_progress.is_empty() {
+                total_progress.push_str(progress);
 
-           let _progress_result = Create_Progress(PublicId.to_owned(), Username.to_owned(), "Video".to_string(), total_progress.to_owned());
-        
-        }
-        
-        else {
-            total_progress.push_str(progress);
+                let _progress_result = Create_Progress(
+                    PublicId.to_owned(),
+                    Username.to_owned(),
+                    "Video".to_string(),
+                    total_progress.to_owned(),
+                );
+            } else {
+                total_progress.push_str(progress);
 
-            let _progress_result = Update_Progress(PublicId.to_owned(), total_progress.to_owned());
-        }
-    });;
-
-    };
+                let _progress_result =
+                    Update_Progress(PublicId.to_owned(), total_progress.to_owned());
+            }
+        });
 
     let bucket_path = VideoBucket.to_owned() + "/" + ID.as_str();
 
-    std::fs::remove_dir_all(process_dir).unwrap();
+    //std::fs::remove_dir_all(process_dir).unwrap();
 
     let process_path = process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str();
 
     Command::new("rclone")
-       .arg("move")
-       .arg(process_path)
-       .arg(VideoBucket.to_owned() + ":" + &bucket_path)
-       .arg("--delete-empty-src-dirs")
-       .output()
-       .unwrap();
+        .arg("move")
+        .arg(process_path)
+        .arg(VideoBucket.to_owned() + ":" + &bucket_path)
+        .arg("--delete-empty-src-dirs")
+        .output()
+        .unwrap();
 
     let mut UploadPaths: Vec<String> = Vec::new();
 
     let endpoint = RCloneConfig["Endpoint"].to_owned();
 
-
     UploadPaths.insert(
         0,
-        endpoint.to_owned() + "/" + VideoBucket.to_owned().as_str() + "/" + ID.as_str() + "/" + ID.as_str() + "-1280.webm"
+        endpoint.to_owned()
+            + "/"
+            + VideoBucket.to_owned().as_str()
+            + "/"
+            + ID.as_str()
+            + "/"
+            + ID.as_str()
+            + "-1280.webm",
     );
 
     UploadPaths.insert(
         1,
-        endpoint.to_owned() + "/" + VideoBucket.to_owned().as_str() + "/" + ID.as_str() + "/" + ID.as_str() + "-720.webm"
+        endpoint.to_owned()
+            + "/"
+            + VideoBucket.to_owned().as_str()
+            + "/"
+            + ID.as_str()
+            + "/"
+            + ID.as_str()
+            + "-720.webm",
     );
 
     UploadPaths.insert(
         2,
-        endpoint.to_owned() + "/" + VideoBucket.to_owned().as_str() + "/" + ID.as_str() + "/" + ID.as_str() + "-320.webm"
+        endpoint.to_owned()
+            + "/"
+            + VideoBucket.to_owned().as_str()
+            + "/"
+            + ID.as_str()
+            + "/"
+            + ID.as_str()
+            + "-320.webm",
     );
 
-    let insert_video: Option<v_media::Model> = v_media::Entity::find().filter(v_media::Column::Id.eq(ID)).one(&connection).await.unwrap();
+    let insert_video: Option<v_media::Model> = v_media::Entity::find()
+        .filter(v_media::Column::Id.eq(ID))
+        .one(&connection)
+        .await
+        .unwrap();
 
     let mut insert_video: v_media::ActiveModel = insert_video.unwrap().into();
 
@@ -199,9 +350,6 @@ pub async fn UploadVideo(
         "Result": "Success",
         "PublicID": PublicId
     });
-    
-    return Ok((
-        cookies,
-        Json(results.to_string())
-    ));
+
+    return Ok((cookies, Json(results.to_string())));
 }

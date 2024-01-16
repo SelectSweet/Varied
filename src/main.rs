@@ -102,9 +102,9 @@ mod Login;
 mod Media;
 mod Text;
 mod Task;
-//mod Video;
+mod Video;
 mod Image;
-//mod Audio;
+mod Audio;
 mod Collection;
 
 use Task::{Create_Progress, Update_Progress};
@@ -280,8 +280,8 @@ async fn main() {
         .route("/api/media", patch(Media::UpdateDetails))
         .route("/api/media", get(Media::ViewMedia))
         .route("/api/text", post(Text::Create_Text))
-        //.route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
-        //.route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
+        .route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
+        .route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
         .route("/api/image", post(Image::UploadImage)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
         .route("/api/collection", post(Collection::Create_Collection))
         .route("/api/feed", get(Feed::feed))
