@@ -120,19 +120,11 @@ pub async fn UploadVideo(
             + "-1280.webm",
     );
 
-    //let process_dir = process.to_owned() + "/" + ID.as_str();
-
-    //std::fs::create_dir_all(&process_dir).unwrap();
     std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str()).unwrap();
 
     if title.is_none() {
        Title.push_str(name.as_str())
     }
-
-    // let InputVideoPath = std::path::Path::new(&name);
-
-    // let VideoFileName =
-    //     ID.as_str().to_owned() + "." + InputVideoPath.extension().unwrap().to_str().unwrap();
 
     let video_name = path.as_path().to_str().unwrap().to_string();
 
@@ -142,7 +134,6 @@ pub async fn UploadVideo(
     let Poster = String::new();
 
     if poster.is_some() {
-        // return image
         let Poster = ProcessImages(
             TypedMultipart(Image::ImageUpload {
                 image: poster.unwrap(),
@@ -279,8 +270,6 @@ pub async fn UploadVideo(
         });
 
     let bucket_path = VideoBucket.to_owned() + "/" + ID.as_str();
-
-    //std::fs::remove_dir_all(process_dir).unwrap();
 
     let process_path = process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str();
 
