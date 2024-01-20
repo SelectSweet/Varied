@@ -131,7 +131,7 @@ pub async fn UploadVideo(
     // gets the current datetime
     let now = Utc::now();
 
-    let Poster = String::new();
+    let mut PosterVec = Vec::new();
 
     if poster.is_some() {
         let Poster = ProcessImages(
@@ -141,11 +141,17 @@ pub async fn UploadVideo(
                 addtoalbum: false,
                 Description: None,
                 CollectionId: None,
+                title: title.to_owned(),
             }),
             Username.to_owned(),
             true,
         )
         .await;
+   
+        let Poster_Url = RCloneConfig["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
+
+        PosterVec.push(Poster_Url);
+
     }
 
     if addtocollection == true && CollectionId.is_some() {
@@ -158,7 +164,7 @@ pub async fn UploadVideo(
             username: ActiveValue::Set(Username.to_owned()),
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
-            poster_storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
             storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
@@ -187,7 +193,7 @@ pub async fn UploadVideo(
             username: ActiveValue::Set(Username.to_owned()),
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
-            poster_storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
             storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),

@@ -1,5 +1,7 @@
 use super::*;
 
+use Image::ProcessImages;
+
 pub fn AudioFrames(file: &str) -> String {
     let command = Command::new("ffprobe")
         .args([
@@ -28,8 +30,12 @@ pub struct AudioUpload {
     #[form_data(limit = "unlimited")]
     pub audio: FieldData<NamedTempFile>,
 
+    #[form_data(limit = "unlimited")]
+    pub poster: Option<FieldData<NamedTempFile>>,
+
     pub addtocollection: bool,
     pub addtoalbum: bool,
+    pub title: Option<String>,
     pub Description: Option<String>,
     pub CollectionId: Option<String>,
 }
@@ -39,10 +45,12 @@ pub async fn UploadAudio(
     cookies: CookieJar,
     TypedMultipart(AudioUpload {
         audio,
+        poster,
         addtocollection,
         addtoalbum,
         Description,
         CollectionId,
+        title
     }): TypedMultipart<AudioUpload>,
 ) -> Result<(CookieJar, Json<String>), StatusCode> {
     let connection = establish_connection().await;
@@ -86,6 +94,28 @@ pub async fn UploadAudio(
     // gets the current datetime
     let now = Utc::now();
 
+    let mut PosterVec = Vec::new();
+
+    if poster.is_some() {
+        let Poster = ProcessImages(
+            TypedMultipart(Image::ImageUpload {
+                image: poster.unwrap(),
+                addtocollection: addtocollection,
+                addtoalbum: false,
+                Description: None,
+                CollectionId: None,
+                title: Some(Title.to_owned())
+            }),
+            Username.to_owned(),
+            true,
+        )
+        .await;
+
+        let Poster_Url = RCloneConfig["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
+
+        PosterVec.push(Poster_Url);
+    }
+
     if addtocollection == false {
         let insert_details = v_media::ActiveModel {
             id: ActiveValue::Set(ID.to_owned()),
@@ -97,7 +127,7 @@ pub async fn UploadAudio(
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::NotSet,
-            poster_storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::Set(Some(PosterVec.to_owned())),
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
@@ -116,7 +146,7 @@ pub async fn UploadAudio(
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::NotSet,
-            poster_storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };

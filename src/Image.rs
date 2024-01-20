@@ -5,6 +5,7 @@ pub struct ImageUpload {
     #[form_data(limit = "unlimited")]
     pub image: FieldData<NamedTempFile>,
 
+    pub title: Option<String>,
     pub addtocollection: bool,
     pub addtoalbum: bool,
     pub Description: Option<String>,
@@ -12,7 +13,12 @@ pub struct ImageUpload {
 }
 
 pub async fn ProcessImages(TypedMultipart(
-    ImageUpload { image, addtocollection, addtoalbum, Description, CollectionId }): TypedMultipart<ImageUpload>,
+    ImageUpload { image, 
+        addtocollection, 
+        addtoalbum, 
+        Description, 
+        CollectionId,
+        title, }): TypedMultipart<ImageUpload>,
     username: String,
     poster: bool,
 ) -> Value {
@@ -36,6 +42,12 @@ pub async fn ProcessImages(TypedMultipart(
         details.insert("AddToAlbum".to_owned(), true.to_string());
     }
 
+    let mut description = String::new();
+
+    if Description.is_some() {
+        description.insert_str(0, &Description.unwrap());
+    }
+
 
     image.contents.persist(path.to_owned()).unwrap();
 
@@ -53,54 +65,56 @@ pub async fn ProcessImages(TypedMultipart(
 
     std::fs::create_dir_all(process.to_owned() + "/" + &ImageBucket + "/" + &PublicID).unwrap();
 
-    Paths.push(
-        process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
-    );
-    // Paths.push(
-    //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-    // );
-    // Paths.push(
-    //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-    // );
-
-    FfmpegCommand::new()
-            .input(image_path)
-            .hide_banner()
-            .arg("-y")
-            .arg(
-                Paths[0].as_str(),
-                
-            )
-            .spawn()
-            .unwrap()
-            .iter()
-            .expect("Image Not comverted");
-
     // gets the current datetime
     let now = Utc::now();
 
     if addtocollection == true {
-        println!("Name: {}, Filetype: {}", name.to_owned(), filetype);
+
+        Paths.push(
+            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
+        );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+    
+        FfmpegCommand::new()
+                .input(image_path)
+                .hide_banner()
+                .arg("-y")
+                .arg(
+                    Paths[0].as_str(),
+                    
+                )
+                .spawn()
+                .unwrap()
+                .iter()
+                .expect("Image Not comverted");
+
+        let properties = json!({
+            "Poster": false
+        });
 
         let image = v_media::ActiveModel { 
-            id: ActiveValue::NotSet, 
+            id: ActiveValue::Set(ID), 
             publicid: ActiveValue::Set(PublicID.to_owned()),
             title: ActiveValue::Set(name.to_owned()), 
             mediatype: ActiveValue::Set("Image".to_string()), 
             uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
             username: ActiveValue::Set(username), 
-            description: ActiveValue::Set(Some(Description.unwrap())), 
+            description: ActiveValue::Set(Some(description)), 
             chapters: ActiveValue::NotSet, 
             storagepathorurl: ActiveValue::NotSet, 
             poster_storagepathorurl: ActiveValue::NotSet, 
-            properties: ActiveValue::NotSet,
+            properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()) 
         };
     
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details).await;
-
 
     
         let result = json!({
@@ -113,11 +127,56 @@ pub async fn ProcessImages(TypedMultipart(
     }
 
     else if poster == true {
-        println!("Name: {}, Filetype: {}", name.to_owned(), filetype);
+
+        Paths.push(
+            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
+        );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+    
+        FfmpegCommand::new()
+                .input(image_path)
+                .hide_banner()
+                .arg("-y")
+                .arg(
+                    Paths[0].as_str(),
+                    
+                )
+                .spawn()
+                .unwrap()
+                .iter()
+                .expect("Image Not comverted");
+            let properties = json!({
+                "Poster": true
+            });
+
+        let image = v_media::ActiveModel { 
+            id: ActiveValue::Set(ID), 
+            publicid: ActiveValue::Set(PublicID.to_owned()),
+            title: ActiveValue::Set(name.to_owned()), 
+            mediatype: ActiveValue::Set("Image".to_string()), 
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
+            username: ActiveValue::Set(username), 
+            description: ActiveValue::NotSet, 
+            chapters: ActiveValue::NotSet, 
+            storagepathorurl: ActiveValue::NotSet, 
+            poster_storagepathorurl: ActiveValue::NotSet, 
+            properties: ActiveValue::Set(Some(properties)),
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()) 
+        };
+    
+        let image: v_media::Model = image.insert(&connection).await.unwrap();
+
+        let PosterUrl = RCloneConfig["Endpoint"].to_string() + "/" + &PublicID.to_owned();
     
         let result = json!({
             "Result": "Success",
-            "Publicid": PublicID
+            "Publicid": PublicID,
+            "Poster": PosterUrl
         });
     
         return result;
@@ -133,6 +192,33 @@ pub async fn ProcessImages(TypedMultipart(
 
     if addtocollection == false && poster == false {
 
+        Paths.push(
+            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
+        );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+    
+        FfmpegCommand::new()
+                .input(image_path)
+                .hide_banner()
+                .arg("-y")
+                .arg(
+                    Paths[0].as_str(),
+                    
+                )
+                .spawn()
+                .unwrap()
+                .iter()
+                .expect("Image Not comverted");
+
+                let properties = json!({
+                    "Poster": false
+                });
+
         let image = v_media::ActiveModel { 
             id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
@@ -140,13 +226,14 @@ pub async fn ProcessImages(TypedMultipart(
             mediatype: ActiveValue::Set("Image".to_string()), 
             uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
             username: ActiveValue::Set(username), 
-            description: ActiveValue::Set(Some(Description.unwrap())), 
+            description: ActiveValue::Set(Some(description)), 
             chapters: ActiveValue::NotSet, 
             storagepathorurl: ActiveValue::NotSet, 
             poster_storagepathorurl: ActiveValue::NotSet, 
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Published.to_string()) 
         };
+        
     
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
@@ -178,7 +265,14 @@ pub async fn ProcessImages(TypedMultipart(
 pub async fn UploadImage(
     cookies: CookieJar,
     Query(details): Query<HashMap<String, String>>,
-    TypedMultipart(ImageUpload {image, addtoalbum, Description, addtocollection, CollectionId } ): TypedMultipart<ImageUpload>
+    TypedMultipart(ImageUpload {
+        image, 
+        addtoalbum, 
+        Description, 
+        addtocollection, 
+        CollectionId,
+        title
+    } ): TypedMultipart<ImageUpload>
 ) -> Json<String> {
 
     let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
@@ -186,7 +280,14 @@ pub async fn UploadImage(
     
 
 
-    let image = ProcessImages(TypedMultipart(ImageUpload {image, addtoalbum, addtocollection, Description, CollectionId } ), Username, false).await;
+    let image = ProcessImages(TypedMultipart(ImageUpload {
+        image, 
+        addtoalbum, 
+        addtocollection, 
+        Description, 
+        CollectionId,
+        title 
+    } ), Username, false).await;
     return Json(image.to_string());
     
 }
