@@ -24,8 +24,6 @@ impl Display for CollectionValues{
 pub async fn add_to_collection(details: HashMap<String, CollectionValues>, cookies: CookieJar) -> Value {
     let connection = establish_connection().await;
 
-    println!("Details: {:?}", details);
-
     let mut Id: Vec<&str> = Vec::new();
     let mut CollectionId = String::new();
     let mut MediaType = Vec::new();
@@ -60,8 +58,6 @@ pub async fn add_to_collection(details: HashMap<String, CollectionValues>, cooki
             MediaType.push(t);
         },
     }
-
-    println!("CollectionId: {}", CollectionId);
 
 
     let mut collection = v_collection::Entity::find_by_id(CollectionId.to_owned()).into_json().one(&connection).await.unwrap().unwrap();
@@ -100,15 +96,7 @@ pub async fn add_to_collection(details: HashMap<String, CollectionValues>, cooki
     let id_value = &collection[id_name];
     let id_string = &id_value.to_owned().to_string();
     let mut current_ids: Vec<&str> = id_string.split(",").collect();
-    println!("current_ids: {:?}", current_ids);
     Id.append(&mut current_ids);
-
-    //let id_vec: &mut Vec<Value> = current_ids.as_array_mut().unwrap();
-    // let id_vec: Vec<Value> = Vec::new();
-    // for i in current_ids {
-    //     id_vec.push(i);
-    // } 
-    // id_vec.push(json!(Id));
     let id_vec_json = json!(Id.to_vec());
 
     let UpdateCollection: Option<v_collection::Model> = v_collection::Entity::find_by_id(CollectionId).one(&connection).await.unwrap();
@@ -221,8 +209,6 @@ pub async fn Update_Collection(
     let mut Ids: Vec<String> = Vec::new();
     let mut Types: Vec<String> = Vec::new();
 
-    //println!("Id: {:?}", Ids);
-
     for i in IdVec.into_iter() {
 
         let ViewMedia = v_media::Entity::find().columns([
@@ -230,16 +216,11 @@ pub async fn Update_Collection(
             v_media::Column::Mediatype
         ]
         ).filter(v_media::Column::Publicid.eq(i.to_string())).one(&connection).await.unwrap().unwrap();
-    
-        //println!("Id: {}", i.to_string());
         Ids.push(i.to_string());
-        //println!("Type {}", ViewMedia.mediatype);
         Types.push(ViewMedia.mediatype);
     }
     params.insert("Id".to_string(), Collection::CollectionValues::Vec(Ids).to_string());
     params.insert("Type".to_string(), Collection::CollectionValues::Vec(Types).to_string());
-
-    //println!("params: {:?}", params);
 
     let update = add_to_collection(details, cookies).await;
 
