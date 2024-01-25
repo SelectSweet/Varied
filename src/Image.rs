@@ -12,34 +12,40 @@ pub struct ImageUpload {
     pub CollectionId: Option<String>,
 }
 
-pub async fn ProcessImages(TypedMultipart(
-    ImageUpload { image, 
-        addtocollection, 
-        addtoalbum, 
-        Description, 
+pub async fn ProcessImages(
+    TypedMultipart(ImageUpload {
+        image,
+        addtocollection,
+        addtoalbum,
+        Description,
         CollectionId,
-        title, }): TypedMultipart<ImageUpload>,
+        title,
+    }): TypedMultipart<ImageUpload>,
     username: String,
     poster: bool,
+    cookies: CookieJar,
 ) -> Value {
     let name = image.metadata.file_name.unwrap();
     let filetype = image.metadata.content_type.unwrap();
     let path = Path::new("/tmp").join(name.to_owned());
     let PublicID = make_sqid(random_nums(12).await);
-    let mut details: HashMap<String, String> = HashMap::new();
-    
-    details.insert("Ids".to_owned(), PublicID.to_owned());
-    details.insert("Type".to_owned(), "Image".to_string());
-    
+    let mut details: HashMap<String, CollectionValues> = HashMap::new();
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
+
+    details.insert("Ids".to_owned(), Collection::CollectionValues::String(PublicID.to_owned()));
+    details.insert("Type".to_owned(), Collection::CollectionValues::String("Image".to_string()));
+
     let connection = establish_connection().await;
 
-
     if CollectionId.is_some() {
-        details.insert("Collection_Id".to_owned(), CollectionId.unwrap());
+        details.insert("Collection_Id".to_owned(), Collection::CollectionValues::String(CollectionId.unwrap()));
     }
 
     if addtoalbum == true {
-        details.insert("AddToAlbum".to_owned(), true.to_string());
+        details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
     }
 
     let mut description = String::new();
@@ -47,7 +53,6 @@ pub async fn ProcessImages(TypedMultipart(
     if Description.is_some() {
         description.insert_str(0, &Description.unwrap());
     }
-
 
     image.contents.persist(path.to_owned()).unwrap();
 
@@ -57,8 +62,8 @@ pub async fn ProcessImages(TypedMultipart(
 
     let mut Paths: Vec<String> = Vec::new();
 
-    let process = RCloneConfig["Process"].to_owned();   
-    
+    let process = RCloneConfig["Process"].to_owned();
+
     let ImageBucket = RCloneConfig["Name"].to_owned();
 
     let ID = Uuid::new_v4().to_string();
@@ -69,7 +74,6 @@ pub async fn ProcessImages(TypedMultipart(
     let now = Utc::now();
 
     if addtocollection == true {
-
         Paths.push(
             process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
         );
@@ -79,55 +83,48 @@ pub async fn ProcessImages(TypedMultipart(
         // Paths.push(
         //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
         // );
-    
+
         FfmpegCommand::new()
-                .input(image_path)
-                .hide_banner()
-                .arg("-y")
-                .arg(
-                    Paths[0].as_str(),
-                    
-                )
-                .spawn()
-                .unwrap()
-                .iter()
-                .expect("Image Not comverted");
+            .input(image_path)
+            .hide_banner()
+            .arg("-y")
+            .arg(Paths[0].as_str())
+            .spawn()
+            .unwrap()
+            .iter()
+            .expect("Image Not comverted");
 
         let properties = json!({
             "Poster": false
         });
 
-        let image = v_media::ActiveModel { 
-            id: ActiveValue::Set(ID), 
+        let image = v_media::ActiveModel {
+            id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
-            title: ActiveValue::Set(name.to_owned()), 
-            mediatype: ActiveValue::Set("Image".to_string()), 
-            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
-            username: ActiveValue::Set(username), 
-            description: ActiveValue::Set(Some(description)), 
-            chapters: ActiveValue::NotSet, 
-            storagepathorurl: ActiveValue::NotSet, 
-            poster_storagepathorurl: ActiveValue::NotSet, 
+            title: ActiveValue::Set(name.to_owned()),
+            mediatype: ActiveValue::Set("Image".to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(username),
+            description: ActiveValue::Set(Some(description)),
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
-            state: ActiveValue::Set(Media::MediaState::Published.to_string()) 
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
-    
+
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
-        let collection = add_to_collection(details).await;
+        let collection = add_to_collection(details, cookies).await;
 
-    
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
             "Collection_Publicid": collection["Publicid"]
         });
-    
+
         return result;
-    }
-
-    else if poster == true {
-
+    } else if poster == true {
         Paths.push(
             process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
         );
@@ -137,48 +134,45 @@ pub async fn ProcessImages(TypedMultipart(
         // Paths.push(
         //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
         // );
-    
-        FfmpegCommand::new()
-                .input(image_path)
-                .hide_banner()
-                .arg("-y")
-                .arg(
-                    Paths[0].as_str(),
-                    
-                )
-                .spawn()
-                .unwrap()
-                .iter()
-                .expect("Image Not comverted");
-            let properties = json!({
-                "Poster": true
-            });
 
-        let image = v_media::ActiveModel { 
-            id: ActiveValue::Set(ID), 
+        FfmpegCommand::new()
+            .input(image_path)
+            .hide_banner()
+            .arg("-y")
+            .arg(Paths[0].as_str())
+            .spawn()
+            .unwrap()
+            .iter()
+            .expect("Image Not comverted");
+        let properties = json!({
+            "Poster": true
+        });
+
+        let image = v_media::ActiveModel {
+            id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
-            title: ActiveValue::Set(name.to_owned()), 
-            mediatype: ActiveValue::Set("Image".to_string()), 
-            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
-            username: ActiveValue::Set(username), 
-            description: ActiveValue::NotSet, 
-            chapters: ActiveValue::NotSet, 
-            storagepathorurl: ActiveValue::NotSet, 
-            poster_storagepathorurl: ActiveValue::NotSet, 
+            title: ActiveValue::Set(name.to_owned()),
+            mediatype: ActiveValue::Set("Image".to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(username),
+            description: ActiveValue::NotSet,
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
-            state: ActiveValue::Set(Media::MediaState::Published.to_string()) 
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
-    
+
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
         let PosterUrl = RCloneConfig["Endpoint"].to_string() + "/" + &PublicID.to_owned();
-    
+
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
             "Poster": PosterUrl
         });
-    
+
         return result;
     }
 
@@ -191,7 +185,6 @@ pub async fn ProcessImages(TypedMultipart(
     }
 
     if addtocollection == false && poster == false {
-
         Paths.push(
             process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
         );
@@ -201,40 +194,36 @@ pub async fn ProcessImages(TypedMultipart(
         // Paths.push(
         //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
         // );
-    
+
         FfmpegCommand::new()
-                .input(image_path)
-                .hide_banner()
-                .arg("-y")
-                .arg(
-                    Paths[0].as_str(),
-                    
-                )
-                .spawn()
-                .unwrap()
-                .iter()
-                .expect("Image Not comverted");
+            .input(image_path)
+            .hide_banner()
+            .arg("-y")
+            .arg(Paths[0].as_str())
+            .spawn()
+            .unwrap()
+            .iter()
+            .expect("Image Not comverted");
 
-                let properties = json!({
-                    "Poster": false
-                });
+        let properties = json!({
+            "Poster": false
+        });
 
-        let image = v_media::ActiveModel { 
+        let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
-            title: ActiveValue::Set(name.to_owned()), 
-            mediatype: ActiveValue::Set("Image".to_string()), 
-            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
-            username: ActiveValue::Set(username), 
-            description: ActiveValue::Set(Some(description)), 
-            chapters: ActiveValue::NotSet, 
-            storagepathorurl: ActiveValue::NotSet, 
-            poster_storagepathorurl: ActiveValue::NotSet, 
+            title: ActiveValue::Set(name.to_owned()),
+            mediatype: ActiveValue::Set("Image".to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(username),
+            description: ActiveValue::Set(Some(description)),
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::NotSet,
-            state: ActiveValue::Set(Media::MediaState::Published.to_string()) 
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
-        
-    
+
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
         let result = json!({
@@ -243,51 +232,47 @@ pub async fn ProcessImages(TypedMultipart(
         });
 
         return result;
-    }
-
-    else {
+    } else {
         let result = json!({
             "Result": "Failure",
             "Publicid": PublicID
         });
-    
+
         return result;
     }
-
-    
-
-    
 }
-    
-
 
 #[debug_handler]
 pub async fn UploadImage(
     cookies: CookieJar,
     Query(details): Query<HashMap<String, String>>,
     TypedMultipart(ImageUpload {
-        image, 
-        addtoalbum, 
-        Description, 
-        addtocollection, 
+        image,
+        addtoalbum,
+        Description,
+        addtocollection,
         CollectionId,
-        title
-    } ): TypedMultipart<ImageUpload>
+        title,
+    }): TypedMultipart<ImageUpload>,
 ) -> Json<String> {
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
 
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
-
-    
-
-
-    let image = ProcessImages(TypedMultipart(ImageUpload {
-        image, 
-        addtoalbum, 
-        addtocollection, 
-        Description, 
-        CollectionId,
-        title 
-    } ), Username, false).await;
+    let image = ProcessImages(
+        TypedMultipart(ImageUpload {
+            image,
+            addtoalbum,
+            addtocollection,
+            Description,
+            CollectionId,
+            title,
+        }),
+        Username,
+        false,
+        cookies,
+    )
+    .await;
     return Json(image.to_string());
-    
 }

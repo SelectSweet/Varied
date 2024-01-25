@@ -63,17 +63,17 @@ pub async fn UploadVideo(
     let name = video.metadata.file_name.unwrap();
     let filetype = video.metadata.content_type.unwrap();
     let path = Path::new("/tmp").join(name.to_owned());
-    let mut details: HashMap<String, String> = HashMap::new();
+    let mut details: HashMap<String, CollectionValues> = HashMap::new();
 
-    details.insert("Ids".to_owned(), PublicId.to_owned());
-    details.insert("Type".to_owned(), "Video".to_string());
+    details.insert("Ids".to_owned(), Collection::CollectionValues::String(PublicId.to_owned()));
+    details.insert("Type".to_owned(), Collection::CollectionValues::String("Video".to_string()));
 
     if CollectionId.is_some() {
-        details.insert("Collection_Id".to_owned(), CollectionId.to_owned().unwrap());
+        details.insert("Collection_Id".to_owned(), Collection::CollectionValues::String(CollectionId.to_owned().unwrap()));
     }
 
     if addtoalbum == true {
-        details.insert("AddToAlbum".to_owned(), true.to_string());
+        details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
     }
 
     video.contents.persist(path.to_owned()).unwrap();
@@ -145,6 +145,7 @@ pub async fn UploadVideo(
             }),
             Username.to_owned(),
             true,
+            cookies.to_owned()
         )
         .await;
    
@@ -172,7 +173,7 @@ pub async fn UploadVideo(
 
         insert_details.insert(&connection).await.unwrap();
 
-        let collection = add_to_collection(details).await;
+        let collection = add_to_collection(details, cookies.to_owned()).await;
 
         let result = json!({
             "Result": "Success",

@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use sqids::{Sqids, Options};
 use std::os::unix::process;
-use std::{fs::File, io::{Read, Write}, net::SocketAddr, fmt, collections::HashMap, process::{Command, Stdio}};
+use std::{fs::File, io::Read, net::SocketAddr, fmt, collections::HashMap, process::{Command, Stdio}, fmt::{Display, Write}};
 use url::Url;
 use base64::{*, engine::general_purpose};
 use chrono::{NaiveDateTime, Utc};
@@ -108,7 +108,7 @@ mod Audio;
 mod Collection;
 
 use Task::{Create_Progress, Update_Progress};
-use Collection::{add_to_collection};
+use Collection::{add_to_collection, CollectionValues};
 
 
 pub async fn establish_connection() -> DatabaseConnection {
@@ -284,6 +284,7 @@ async fn main() {
         .route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
         .route("/api/image", post(Image::UploadImage)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(file_size))
         .route("/api/collection", post(Collection::Create_Collection))
+        .route("/api/collection/add", post(Collection::Update_Collection))
         .route("/api/feed", get(Feed::feed))
         .route("/api/tasks", get(Task::list_tasks))
         .layer(cors)

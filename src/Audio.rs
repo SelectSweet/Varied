@@ -70,7 +70,7 @@ pub async fn UploadAudio(
     let filetype = audio.metadata.content_type.unwrap();
     let path = Path::new("/tmp").join(name.to_owned());
     let PublicID = make_sqid(random_nums(12).await);
-    let mut details: HashMap<String, String> = HashMap::new();
+    let mut details: HashMap<String, CollectionValues> = HashMap::new();
 
     std::fs::create_dir_all(process.to_owned() + "/" + &AudioBucket + "/" + ID).unwrap();
 
@@ -85,6 +85,14 @@ pub async fn UploadAudio(
 
     if Title == "" {
         Title.push_str(name.as_str())
+    }
+
+    if CollectionId.is_some() {
+        details.insert("Collection_Id".to_owned(), Collection::CollectionValues::String(CollectionId.to_owned().unwrap()));
+    }
+
+    if addtoalbum == true {
+        details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
     }
 
     audio.contents.persist(path.to_owned()).unwrap();
@@ -108,6 +116,7 @@ pub async fn UploadAudio(
             }),
             Username.to_owned(),
             true,
+            cookies.to_owned()
         )
         .await;
 
@@ -153,7 +162,7 @@ pub async fn UploadAudio(
     
         let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
 
-        let collection = add_to_collection(details).await;
+        let collection = add_to_collection(details, cookies.to_owned()).await;
     
         let result = json!({
             "Result": "Success",

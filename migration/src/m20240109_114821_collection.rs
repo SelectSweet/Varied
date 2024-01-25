@@ -24,6 +24,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(v_collection::State).string().not_null())
                     .col(ColumnDef::new(v_collection::IDs).json())
                     .col(ColumnDef::new(v_collection::Properties).json())
+                    .col(ColumnDef::new(v_collection::Username).string().not_null())
                     .to_owned(),
             )
             .await
@@ -46,5 +47,6 @@ enum v_collection {
     Type,
     State,
     IDs,
-    Properties
+    Properties,
+    Username
 }

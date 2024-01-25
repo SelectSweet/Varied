@@ -14,6 +14,7 @@ pub struct Model {
     pub state: String,
     pub i_ds: Option<Json>,
     pub properties: Option<Json>,
+    pub username: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

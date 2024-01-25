@@ -15,7 +15,7 @@ members = [
 [dependencies]
 migration = { path = "migration" }
 entity = { path = "entity" }
-sea-orm = { version = "0.12.4", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid", "postgres-array" ] }
+sea-orm = { version = "0.12.12", features = [ "sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid", "postgres-array" ] }
 serde = { version = "1.0.192", features = [ "derive" ] }
 toml = { version = "0.8.8", features = [ "parse" ] }
 axum = { version = "0.7.3", features =  ["multipart", "query", "json", "macros", "form", "tokio"]}
@@ -30,7 +30,6 @@ base64 = "0.21.5"
 chrono = "0.4.31"
 rand = "0.8.5"
 ffmpeg-sidecar = "0.5.1"
-sea-query = "0.30.4"
 sqids = "0.3.1"
 tempfile = "3.9.0"
 axum_typed_multipart = "0.11.0"
