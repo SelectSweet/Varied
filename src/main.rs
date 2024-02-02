@@ -35,7 +35,7 @@ use axum::{
     //TypedHeader,
     http::{header::*, Method, Request, StatusCode, request::Parts as RequestParts},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::{get, patch, post, options},
+    routing::{get, patch, post},
     body::Body,
     Json, Router, debug_handler,
 };
@@ -271,6 +271,8 @@ async fn main() {
     let app = Router::new()
         .route("/api/account", post(Account::create_account))
         .route("/api/account", get(Account::view_account))
+        .route("/api/account", patch(Account::update_account))
+        .route("/api/account/avatar", patch(Account::update_avatar))
         .route("/api/login", post(Login::login))
         .route("/api/logout", post(Login::logout))
         .route("/api/follow", post(Follow::follow))

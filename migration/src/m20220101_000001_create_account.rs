@@ -45,7 +45,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(v_account::Email).text().not_null().unique_key())
                     .col(ColumnDef::new(v_account::Created_At).date_time().not_null())
                     .col(ColumnDef::new(v_account::Display_Name).text().not_null())
-                    .col(ColumnDef::new(v_account::Avatar).text().not_null())
+                    .col(ColumnDef::new(v_account::Avatar).text())
                     .col(ColumnDef::new(v_account::Profile_Metadata).json())
                     .col(ColumnDef::new(v_account::Description).text())
                     .to_owned(),

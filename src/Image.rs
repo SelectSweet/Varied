@@ -23,6 +23,7 @@ pub async fn ProcessImages(
     }): TypedMultipart<ImageUpload>,
     username: String,
     poster: bool,
+    avatar: bool,
     cookies: CookieJar,
 ) -> Value {
     let name = image.metadata.file_name.unwrap();
@@ -66,6 +67,8 @@ pub async fn ProcessImages(
 
     let ImageBucket = RCloneConfig["Name"].to_owned();
 
+    let ImageStorageUrl = RCloneConfig["Endpoint"].to_owned() + &ImageBucket.to_owned() + "/";
+
     let ID = Uuid::new_v4().to_string();
 
     std::fs::create_dir_all(process.to_owned() + "/" + &ImageBucket + "/" + &PublicID).unwrap();
@@ -98,6 +101,8 @@ pub async fn ProcessImages(
             "Poster": false
         });
 
+        let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
+
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
@@ -107,7 +112,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -176,6 +181,58 @@ pub async fn ProcessImages(
         return result;
     }
 
+    else if avatar == true {
+        Paths.push(
+            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
+        );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+
+        FfmpegCommand::new()
+            .input(image_path)
+            .hide_banner()
+            .arg("-y")
+            .arg(Paths[0].as_str())
+            .spawn()
+            .unwrap()
+            .iter()
+            .expect("Image Not comverted");
+        let properties = json!({
+            "Avatar": true
+        });
+
+        let image = v_media::ActiveModel {
+            id: ActiveValue::Set(ID),
+            publicid: ActiveValue::Set(PublicID.to_owned()),
+            title: ActiveValue::Set(name.to_owned()),
+            mediatype: ActiveValue::Set("Image".to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(username),
+            description: ActiveValue::NotSet,
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::NotSet,
+            properties: ActiveValue::Set(Some(properties)),
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()),
+        };
+
+        let image: v_media::Model = image.insert(&connection).await.unwrap();
+
+        let PosterUrl = RCloneConfig["Endpoint"].to_string() + "/" + &PublicID.to_owned();
+
+        let result = json!({
+            "Result": "Success",
+            "Publicid": PublicID,
+            "Avatar": PosterUrl
+        });
+
+        return result;
+    }
+
     if addtocollection == true && poster == true {
         let result = json!({
             "Result": "Cant add poster to collection"
@@ -209,6 +266,8 @@ pub async fn ProcessImages(
             "Poster": false
         });
 
+        let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
+
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
@@ -218,7 +277,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -271,8 +330,11 @@ pub async fn UploadImage(
         }),
         Username,
         false,
+        false,
         cookies,
     )
     .await;
+
+
     return Json(image.to_string());
 }

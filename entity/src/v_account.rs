@@ -17,8 +17,8 @@ pub struct Model {
     pub created_at: DateTime,
     #[sea_orm(column_type = "Text")]
     pub display_name: String,
-    #[sea_orm(column_type = "Text")]
-    pub avatar: String,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub avatar: Option<String>,
     pub profile_metadata: Option<Json>,
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
