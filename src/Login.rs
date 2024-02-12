@@ -10,7 +10,7 @@ pub struct User {
 pub async fn login(
     cookies: CookieJar,
     headers: HeaderMap,
-    Form(data): Form<User>
+    Json(data): Json<User>
 ) -> Result<(CookieJar, Json<String>), StatusCode>  {
     
     let connection = establish_connection().await;
