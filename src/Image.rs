@@ -97,8 +97,11 @@ pub async fn ProcessImages(
             .iter()
             .expect("Image Not comverted");
 
+
         let properties = json!({
-            "Poster": false
+            "Poster": false,
+            "Avatar": false,
+            "Album": false     
         });
 
         let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
@@ -129,7 +132,7 @@ pub async fn ProcessImages(
         });
 
         return result;
-    } else if poster == true {
+    } else if addtoalbum == true {
         Paths.push(
             process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
         );
@@ -149,8 +152,69 @@ pub async fn ProcessImages(
             .unwrap()
             .iter()
             .expect("Image Not comverted");
+
+
         let properties = json!({
-            "Poster": true
+            "Poster": false,
+            "Avatar": false,
+            "Album": true     
+        });
+
+        let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
+
+        let image = v_media::ActiveModel {
+            id: ActiveValue::Set(ID),
+            publicid: ActiveValue::Set(PublicID.to_owned()),
+            title: ActiveValue::Set(name.to_owned()),
+            mediatype: ActiveValue::Set("Image".to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(username),
+            description: ActiveValue::Set(Some(description)),
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
+            poster_storagepathorurl: ActiveValue::NotSet,
+            properties: ActiveValue::Set(Some(properties)),
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()),
+        };
+
+        let image: v_media::Model = image.insert(&connection).await.unwrap();
+
+        let collection = add_to_collection(details, cookies).await;
+
+        let result = json!({
+            "Result": "Success",
+            "Publicid": PublicID,
+            "Collection_Publicid": collection["Publicid"]
+        });
+
+        return result;
+    }
+    
+     else if poster == true {
+        Paths.push(
+            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
+        );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+        // Paths.push(
+        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
+        // );
+
+        FfmpegCommand::new()
+            .input(image_path)
+            .hide_banner()
+            .arg("-y")
+            .arg(Paths[0].as_str())
+            .spawn()
+            .unwrap()
+            .iter()
+            .expect("Image Not comverted");
+        
+        let properties = json!({
+            "Poster": true,
+            "Avatar": false,
+            "Album": false     
         });
 
         let image = v_media::ActiveModel {
@@ -201,8 +265,11 @@ pub async fn ProcessImages(
             .unwrap()
             .iter()
             .expect("Image Not comverted");
+
         let properties = json!({
-            "Avatar": true
+            "Poster": false,
+            "Avatar": true,
+            "Album": false     
         });
 
         let image = v_media::ActiveModel {
@@ -241,7 +308,7 @@ pub async fn ProcessImages(
         return result;
     }
 
-    if addtocollection == false && poster == false {
+    if addtocollection == false && poster == false && avatar == false {
         Paths.push(
             process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
         );
@@ -262,9 +329,11 @@ pub async fn ProcessImages(
             .iter()
             .expect("Image Not comverted");
 
-        let properties = json!({
-            "Poster": false
-        });
+            let properties = json!({
+                "Poster": false,
+                "Avatar": false,
+                "Album": false     
+            });
 
         let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
 
@@ -279,7 +348,7 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::NotSet,
+            properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
