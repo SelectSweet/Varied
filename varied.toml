@@ -9,3 +9,14 @@ process = "" # Rclone Proccess Folder
 [Core]
 file_size_limit = "" # File Size Limit
 front_end_url = "" # Front end URL Goes Here
+
+[Object]
+name = ""
+
+[S3]
+bucket = ""
+root = ""
+region = ""
+endpoint = ""
+access_key_id = ""
+secret_access_key = ""
