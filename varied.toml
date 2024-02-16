@@ -1,17 +1,14 @@
 [database]
 url = "" # Your Database URL Goes here
 
-[RClone]
-name = "" # The Name of your RClone Bucket
-endpoint = "" # RClone Endpoint URL
-process = "" # Rclone Proccess Folder
-
 [Core]
 file_size_limit = "" # File Size Limit
 front_end_url = "" # Front end URL Goes Here
 
 [Object]
 name = ""
+endpoint = "" 
+process = ""
 
 [S3]
 bucket = ""
