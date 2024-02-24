@@ -1,5 +1,3 @@
-use crate::Image::ProcessImages;
-
 use super::*;
 
 pub fn VideoFrames(file: &str) -> String {
@@ -58,7 +56,7 @@ pub async fn UploadVideo(
     let ID = Uuid::new_v4().to_string();
     let PublicId = make_sqid(random_nums(10).await);
     let mut Title = String::new();
-    let RCloneConfig = get_rclone_config();
+    let object = get_object_config();
 
     let name = video.metadata.file_name.unwrap();
     let filetype = video.metadata.content_type.unwrap();
@@ -76,11 +74,13 @@ pub async fn UploadVideo(
         details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
     }
 
+    let op = get_dal_op().await.unwrap();
+
     video.contents.persist(path.to_owned()).unwrap();
 
-    let process = RCloneConfig["Process"].to_owned();
+    let process = object["Process"].to_owned();
 
-    let VideoBucket = RCloneConfig["Name"].to_owned();
+    let VideoBucket = object["Name"].to_owned();
 
     let Username = get_session(cookies.clone())
         .await
@@ -88,39 +88,43 @@ pub async fn UploadVideo(
         .replace("\"", "");
 
     let mut Paths: Vec<String> = Vec::new();
+    let mut Videos: Vec<String> = Vec::new();
+
+    Videos.push(PublicId.as_str().to_owned() + "_320.webm");
+    Videos.push(PublicId.as_str().to_owned() + "_720.webm");
+    Videos.push(PublicId.as_str().to_owned() + "_1280.webm");
+
+
 
     Paths.push(
         process.to_owned()
             + "/"
             + &VideoBucket
             + "/"
-            + ID.as_str()
+            + PublicId.as_str()
             + "/"
-            + ID.as_str()
-            + "-320.webm",
+            + &Videos[0],
     );
     Paths.push(
         process.to_owned()
             + "/"
             + &VideoBucket
             + "/"
-            + ID.as_str()
+            + PublicId.as_str()
             + "/"
-            + ID.as_str()
-            + "-720.webm",
+            + &Videos[1],
     );
     Paths.push(
         process.to_owned()
             + "/"
             + &VideoBucket
             + "/"
-            + ID.as_str()
+            + PublicId.as_str()
             + "/"
-            + ID.as_str()
-            + "-1280.webm",
+            + &Videos[2],
     );
 
-    std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str()).unwrap();
+    std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str()).unwrap();
 
     if title.is_none() {
        Title.push_str(name.as_str())
@@ -150,7 +154,7 @@ pub async fn UploadVideo(
         )
         .await;
    
-        let Poster_Url = RCloneConfig["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
+        let Poster_Url = object["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
 
         PosterVec.push(Poster_Url);
 
@@ -277,57 +281,30 @@ pub async fn UploadVideo(
             }
         });
 
-    let bucket_path = VideoBucket.to_owned() + "/" + ID.as_str();
-
-    let process_path = process.to_owned() + "/" + &VideoBucket + "/" + ID.as_str();
-
-    Command::new("rclone")
-        .arg("move")
-        .arg(process_path)
-        .arg(VideoBucket.to_owned() + ":" + &bucket_path)
-        .arg("--delete-empty-src-dirs")
-        .output()
-        .unwrap();
-
     let mut UploadPaths: Vec<String> = Vec::new();
 
-    let endpoint = RCloneConfig["Endpoint"].to_owned();
+    let ProcessFolder = process.to_owned() + "/" + PublicId.as_str();
 
-    UploadPaths.insert(
-        0,
-        endpoint.to_owned()
-            + "/"
-            + VideoBucket.to_owned().as_str()
-            + "/"
-            + ID.as_str()
-            + "/"
-            + ID.as_str()
-            + "-1280.webm",
-    );
+    UploadPaths.push(ProcessFolder.to_owned() + "/" + PublicId.as_str() + "_320.webm");
+    UploadPaths.push(ProcessFolder.to_owned() + "/" + PublicId.as_str() + "_720.webm");
+    UploadPaths.push(ProcessFolder.to_owned() + "/" + PublicId.as_str() + "_1280.webm");
 
-    UploadPaths.insert(
-        1,
-        endpoint.to_owned()
-            + "/"
-            + VideoBucket.to_owned().as_str()
-            + "/"
-            + ID.as_str()
-            + "/"
-            + ID.as_str()
-            + "-720.webm",
-    );
+    let mut VideoInt = 0;
 
-    UploadPaths.insert(
-        2,
-        endpoint.to_owned()
-            + "/"
-            + VideoBucket.to_owned().as_str()
-            + "/"
-            + ID.as_str()
-            + "/"
-            + ID.as_str()
-            + "-320.webm",
-    );
+    //op.0.create_dir(&(PublicId.as_str().to_owned() + "/").to_string()).await.unwrap();
+
+    for p in Paths {
+        let from = Path::new(p.as_str());
+        let to = (PublicId.as_str().to_owned() + "/" + &Videos[VideoInt]);
+        println!("From: {:?}", from);
+        let video: Vec<u8> = fs::read(from).unwrap();
+
+        op.0.write(&to, video).await.unwrap();
+
+        VideoInt = VideoInt + 1;
+    } 
+
+    std::fs::remove_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + &PublicId.to_owned()).unwrap();
 
     let insert_video: Option<v_media::Model> = v_media::Entity::find()
         .filter(v_media::Column::Id.eq(ID))
