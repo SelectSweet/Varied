@@ -12,6 +12,12 @@ pub struct ImageUpload {
     pub CollectionId: Option<String>,
 }
 
+pub async fn PushImage(Path: String, PublicID: String, images: String, op: Operator) {
+    let image = fs::read(Path).unwrap(); 
+    let to = PublicID.as_str().to_owned() + "/" + &images;
+    op.write(&to, image).await.unwrap();
+}
+
 pub async fn ProcessImages(
     TypedMultipart(ImageUpload {
         image,
@@ -57,35 +63,47 @@ pub async fn ProcessImages(
 
     image.contents.persist(path.to_owned()).unwrap();
 
-    let RCloneConfig = get_rclone_config();
+    let object = get_object_config();
 
     let image_path = path.as_path().to_str().unwrap().to_string();
 
     let mut Paths: Vec<String> = Vec::new();
 
-    let process = RCloneConfig["Process"].to_owned();
+    let Process = object["Process"].to_owned();
 
-    let ImageBucket = RCloneConfig["Name"].to_owned();
+    let ImageBucket = object["Name"].to_owned();
 
-    let ImageStorageUrl = RCloneConfig["Endpoint"].to_owned() + &ImageBucket.to_owned() + "/";
+    let ImageStorageUrl = object["Endpoint"].to_owned() + &ImageBucket.to_owned() + "/";
 
     let ID = Uuid::new_v4().to_string();
 
-    std::fs::create_dir_all(process.to_owned() + "/" + &ImageBucket + "/" + &PublicID).unwrap();
+    let op = get_dal_op().await.unwrap();
+
+    std::fs::create_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
 
     // gets the current datetime
     let now = Utc::now();
 
-    if addtocollection == true {
-        Paths.push(
-            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
-        );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
+
+    let mut Paths: Vec<String> = Vec::new();
+    let mut images = Vec::new();
+
+    images.push(PublicID.as_str().to_owned() + "_High.webp");
+
+    Paths.push(Process.to_owned() + "/" + &ImageBucket + "/" + PublicID.to_owned().as_str() + "/" + images[0].as_str());   
+
+    // Paths.push(
+    //     process.to_owned() + "/" + &ImageBucket + "/" + PublicID.to_owned().as_str() + "/" + images[0].as_str(),
+    // );
+    // Paths.push(
+    //     process.to_owned() + "/" + &ImageBucket + "/" + PublicID.to_owned().as_str() + "/" + images[0].as_str(),
+    // );
+
+    let oper = op.0;
+    
+
+
+    if addtoalbum == true {        
 
         FfmpegCommand::new()
             .input(image_path)
@@ -100,11 +118,11 @@ pub async fn ProcessImages(
 
         let properties = json!({
             "Poster": false,
-            "Avatar": false,
-            "Album": false     
+            "Album": true,
+            "Avatar": false
         });
 
-        let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
+        let ImageStorageURL = ImageStorageUrl + "/" + &images[0];
 
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
@@ -125,6 +143,10 @@ pub async fn ProcessImages(
 
         let collection = add_to_collection(details, cookies).await;
 
+        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;                
+    
+        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
@@ -132,16 +154,7 @@ pub async fn ProcessImages(
         });
 
         return result;
-    } else if addtoalbum == true {
-        Paths.push(
-            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
-        );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
+    } else if addtocollection == true && addtoalbum == false {        
 
         FfmpegCommand::new()
             .input(image_path)
@@ -191,15 +204,6 @@ pub async fn ProcessImages(
     }
     
      else if poster == true {
-        Paths.push(
-            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
-        );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
 
         FfmpegCommand::new()
             .input(image_path)
@@ -210,13 +214,63 @@ pub async fn ProcessImages(
             .unwrap()
             .iter()
             .expect("Image Not comverted");
-        
+          
         let properties = json!({
-            "Poster": true,
-            "Avatar": false,
-            "Album": false     
+            "Poster": false,
+            "Album": false,
+            "Avatar": false
         });
 
+        let ImageStorageURL = ImageStorageUrl + "/" + &images[0];
+
+        let image = v_media::ActiveModel {
+            id: ActiveValue::Set(ID),
+            publicid: ActiveValue::Set(PublicID.to_owned()),
+            title: ActiveValue::Set(name.to_owned()),
+            mediatype: ActiveValue::Set("Image".to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(username),
+            description: ActiveValue::Set(Some(description)),
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
+            poster_storagepathorurl: ActiveValue::NotSet,
+            properties: ActiveValue::Set(Some(properties)),
+            state: ActiveValue::Set(Media::MediaState::Published.to_string()),
+        };
+
+        let image: v_media::Model = image.insert(&connection).await.unwrap();
+
+        let collection = add_to_collection(details, cookies).await;
+
+        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await; 
+         
+
+        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+
+        let result = json!({
+            "Result": "Success",
+            "Publicid": PublicID,
+            "Collection_Publicid": collection["Publicid"]
+        });
+
+        return result;
+    } else if poster == true {
+
+        FfmpegCommand::new()
+            .input(image_path)
+            .hide_banner()
+            .arg("-y")
+            .arg(Paths[0].as_str())
+            .spawn()
+            .unwrap()
+            .iter()
+            .expect("Image Not comverted");
+
+        let properties = json!({
+            "Poster": true,
+            "Album": false,
+            "Avatar": false
+        });
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
@@ -234,7 +288,11 @@ pub async fn ProcessImages(
 
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
-        let PosterUrl = RCloneConfig["Endpoint"].to_string() + "/" + &PublicID.to_owned();
+        let PosterUrl = object["Endpoint"].to_string() + "/" + &images[0];
+
+        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await; 
+
+        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -246,15 +304,6 @@ pub async fn ProcessImages(
     }
 
     else if avatar == true {
-        Paths.push(
-            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
-        );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
 
         FfmpegCommand::new()
             .input(image_path)
@@ -263,13 +312,13 @@ pub async fn ProcessImages(
             .arg(Paths[0].as_str())
             .spawn()
             .unwrap()
-            .iter()
+            .wait()
             .expect("Image Not comverted");
 
         let properties = json!({
             "Poster": false,
-            "Avatar": true,
-            "Album": false     
+            "Album": false,
+            "Avatar": true
         });
 
         let image = v_media::ActiveModel {
@@ -289,7 +338,13 @@ pub async fn ProcessImages(
 
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
-        let PosterUrl = RCloneConfig["Endpoint"].to_string() + "/" + &PublicID.to_owned();
+        let PosterUrl = object["Endpoint"].to_string() + "/" + &images[0];
+
+        let to = (PublicID.as_str().to_owned() + "/" + &images[0]);
+
+        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;           
+    
+        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -308,16 +363,7 @@ pub async fn ProcessImages(
         return result;
     }
 
-    if addtocollection == false && poster == false && avatar == false {
-        Paths.push(
-            process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + ".webp",
-        );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
-        // Paths.push(
-        //     process.to_owned() + "/" + &ImageBucket + "/" + &PublicID + "/" + &PublicID + "-High.webp",
-        // );
+    if addtocollection == false && poster == false {
 
         FfmpegCommand::new()
             .input(image_path)
@@ -326,16 +372,16 @@ pub async fn ProcessImages(
             .arg(Paths[0].as_str())
             .spawn()
             .unwrap()
-            .iter()
+            .wait()
             .expect("Image Not comverted");
 
-            let properties = json!({
-                "Poster": false,
-                "Avatar": false,
-                "Album": false     
-            });
+        let properties = json!({
+            "Poster": false,
+            "Album": false,
+            "Avatar": false
+        });
 
-        let ImageStorageURL = ImageStorageUrl + &PublicID + ".webp";
+        let ImageStorageURL = ImageStorageUrl + "/" + &images[0];
 
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
@@ -353,6 +399,10 @@ pub async fn ProcessImages(
         };
 
         let image: v_media::Model = image.insert(&connection).await.unwrap();
+
+        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;  
+
+        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
 
         let result = json!({
             "Result": "Success",
