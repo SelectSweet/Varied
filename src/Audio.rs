@@ -55,14 +55,13 @@ pub async fn UploadAudio(
 ) -> Result<(CookieJar, Json<String>), StatusCode> {
     let connection = establish_connection().await;
 
-    //let mount_path = "Cache";
 
     let UID = Uuid::new_v4().to_string();
     let ID = UID.as_str();
     let mut Title = String::new();
-    let mut RCloneConfig = get_rclone_config();
-    let process = RCloneConfig["Process"].to_owned();
-    let AudioBucket = RCloneConfig["Name"].to_owned();
+    let mut object = get_object_config();
+    let Process = object["Process"].to_owned();
+    let AudioBucket = object["Name"].to_owned();
 
     let Username = get_session(cookies.clone()).await;
 
@@ -72,16 +71,27 @@ pub async fn UploadAudio(
     let PublicID = make_sqid(random_nums(12).await);
     let mut details: HashMap<String, CollectionValues> = HashMap::new();
 
-    std::fs::create_dir_all(process.to_owned() + "/" + &AudioBucket + "/" + ID).unwrap();
+    std::fs::create_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
+
+    let op = get_dal_op().await.unwrap();
 
     let mut Paths: Vec<String> = Vec::new();
-    Paths.push(process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-High.flac");
+    let mut Audios = Vec::new();
+
+    Audios.push(PublicID.as_str().to_owned() + "_High.flac");
+
+
+    Paths.push(Process.to_owned() + "/" + &AudioBucket + "/" + PublicID.to_owned().as_str() + "/" + Audios[0].as_str());
     // Paths.push(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
     // );
     // Paths.push(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
     // );
+
+    
+
+
 
     if Title == "" {
         Title.push_str(name.as_str())
@@ -121,7 +131,7 @@ pub async fn UploadAudio(
         )
         .await;
 
-        let Poster_Url = RCloneConfig["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
+        let Poster_Url = object["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
 
         PosterVec.push(Poster_Url);
     }
@@ -205,56 +215,37 @@ pub async fn UploadAudio(
             }
         });
 
-    let bucket_path = AudioBucket.to_owned() + "/" + ID;
-
-    let process_path = process.to_owned() + "/" + &AudioBucket + "/" + ID;
-    Command::new("rclone")
-        .arg("move")
-        .arg(process_path)
-        .arg(AudioBucket.to_owned() + ":" + &bucket_path)
-        .arg("--delete-empty-src-dirs")
-        .output()
-        .unwrap();
+    
 
     let mut UploadPaths: Vec<String> = Vec::new();
 
-    let endpoint = RCloneConfig["Endpoint"].to_owned();
+    let ProcessFolder = Process.to_owned() + "/" + &AudioBucket;
 
-    UploadPaths.insert(
-        0,
-        endpoint.to_owned()
-            + "/"
-            + AudioBucket.to_owned().as_str()
-            + "/"
-            + ID
-            + "/"
-            + ID
-            + "-High.flac",
-    );
+    // let mut AudioInt = 0;
 
-    // UploadPaths.insert(
-    //     1,
-    //     endpoint.to_owned()
-    //         + "/"
-    //         + AudioBucket.to_owned().as_str()
-    //         + "/"
-    //         + ID
-    //         + "/"
-    //         + ID
-    //         + "-720.webm",
-    // );
+    // for p in Paths {
+    //     let from = Path::new(p.as_str());
+    //     let to = (PublicID.as_str().to_owned() + "/" + &Audios[AudioInt]);
+    //     println!("From: {:?}", from);
+    //     let audio: Vec<u8> = fs::read(from).unwrap();
 
-    // UploadPaths.insert(
-    //     2,
-    //     endpoint.to_owned()
-    //         + "/"
-    //         + AudioBucket.to_owned().as_str()
-    //         + "/"
-    //         + ID
-    //         + "/"
-    //         + ID
-    //         + "-320.webm",
-    // );
+    //     op.0.write(&to, audio).await.unwrap();
+
+    //     AudioInt = AudioInt + 1;
+    // }
+     
+    let from = Paths[0].to_owned();
+    let FromPath = Path::new(from.as_str());
+    let to = (PublicID.as_str().to_owned() + "/" + &Audios[0]);
+    let audio: Vec<u8> = fs::read(FromPath.to_owned()).unwrap();
+    op.0.write(&to, audio).await.unwrap();  
+
+    std::fs::remove_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
+
+    UploadPaths.push(ProcessFolder.to_owned() + "/" + ID + "-High.flac");
+    //UploadPaths.push(ProcessFolder.to_owned() + "/" + ID.as_str() + "-.flac");
+
+    let endpoint = object["Endpoint"].to_owned();
 
     let insert_audio: Option<v_media::Model> = v_media::Entity::find()
         .filter(v_media::Column::Id.eq(ID))
