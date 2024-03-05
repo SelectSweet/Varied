@@ -89,11 +89,9 @@ pub async fn UploadAudio(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
     // );
 
-    let mut UploadPath: Vec<String> = Vec::new();
+    
 
-    UploadPath.push(PublicID.as_str().to_owned()  + "/" + &Audios[0]);
-    // UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Audios[1]);
-    // UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Audios[2]);
+
 
     if Title == "" {
         Title.push_str(name.as_str())
@@ -276,7 +274,37 @@ pub async fn UploadAudio(
     let audio: Vec<u8> = fs::read(FromPath.to_owned()).unwrap();
     op.0.write(&to, audio).await.unwrap();  
 
+    
+
+    let mut UploadPaths: Vec<String> = Vec::new();
+
+    let ProcessFolder = Process.to_owned() + "/" + &AudioBucket;
+
+    // let mut AudioInt = 0;
+
+    // for p in Paths {
+    //     let from = Path::new(p.as_str());
+    //     let to = (PublicID.as_str().to_owned() + "/" + &Audios[AudioInt]);
+    //     println!("From: {:?}", from);
+    //     let audio: Vec<u8> = fs::read(from).unwrap();
+
+    //     op.0.write(&to, audio).await.unwrap();
+
+    //     AudioInt = AudioInt + 1;
+    // }
+     
+    let from = Paths[0].to_owned();
+    let FromPath = Path::new(from.as_str());
+    let to = (PublicID.as_str().to_owned() + "/" + &Audios[0]);
+    let audio: Vec<u8> = fs::read(FromPath.to_owned()).unwrap();
+    op.0.write(&to, audio).await.unwrap();  
+
     std::fs::remove_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
+
+    UploadPaths.push(ProcessFolder.to_owned() + "/" + ID + "-High.flac");
+    //UploadPaths.push(ProcessFolder.to_owned() + "/" + ID.as_str() + "-.flac");
+
+    let endpoint = object["Endpoint"].to_owned();
 
     let insert_audio: Option<v_media::Model> = v_media::Entity::find()
         .filter(v_media::Column::Id.eq(ID))
