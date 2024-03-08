@@ -186,7 +186,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
+            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -225,8 +225,6 @@ pub async fn ProcessImages(
             "Avatar": false
         });
 
-        let ImageStorageURL = ImageStorageUrl + "/" + &images[0];
-
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
             publicid: ActiveValue::Set(PublicID.to_owned()),
@@ -236,7 +234,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![ImageStorageURL])),
+            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -385,8 +383,6 @@ pub async fn ProcessImages(
             "Album": false,
             "Avatar": false
         });
-
-        let ImageStorageURL = ImageStorageUrl + "/" + &images[0];
 
         let image = v_media::ActiveModel {
             id: ActiveValue::Set(ID),
