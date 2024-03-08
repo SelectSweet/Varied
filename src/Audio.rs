@@ -89,10 +89,6 @@ pub async fn UploadAudio(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
     // );
 
-    
-
-
-
     if Title == "" {
         Title.push_str(name.as_str())
     }
@@ -171,6 +167,43 @@ pub async fn UploadAudio(
             "Album": false,
             "Avatar": false
         });
+
+        let insert_details = v_media::ActiveModel {
+            id: ActiveValue::Set(ID.to_owned()),
+            publicid: ActiveValue::Set(PublicID.to_owned()),
+            title: ActiveValue::Set(Title.to_owned()),
+            mediatype: ActiveValue::Set(Media::MediaType::Audio.to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(Username.to_owned()),
+            description: ActiveValue::NotSet,
+            chapters: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
+            properties: ActiveValue::NotSet,
+            state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
+        };
+    
+        let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
+
+        let collection = add_to_collection(details, cookies.to_owned()).await;
+    
+        let result = json!({
+            "Result": "Success",
+            "Publicid": PublicID,
+            "Collection_Publicid": collection["Publicid"]
+        });
+    
+        return Ok((cookies, Json(result.to_string())));
+    }
+
+    if addtoalbum == true && CollectionId.is_some() && addtocollection == false {
+
+        let properties = json!({
+            "Poster": false,
+            "Album": true,
+            "Avatar": false
+        });
+        
 
         let insert_details = v_media::ActiveModel {
             id: ActiveValue::Set(ID.to_owned()),
