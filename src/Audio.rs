@@ -177,7 +177,7 @@ pub async fn UploadAudio(
             username: ActiveValue::Set(Username.to_owned()),
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
             properties: ActiveValue::NotSet,
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
