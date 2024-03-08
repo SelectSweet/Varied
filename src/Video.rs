@@ -291,12 +291,9 @@ pub async fn UploadVideo(
 
     let mut VideoInt = 0;
 
-    //op.0.create_dir(&(PublicId.as_str().to_owned() + "/").to_string()).await.unwrap();
-
     for p in Paths {
         let from = Path::new(p.as_str());
         let to = (PublicId.as_str().to_owned() + "/" + &Videos[VideoInt]);
-        println!("From: {:?}", from);
         let video: Vec<u8> = fs::read(from).unwrap();
 
         op.0.write(&to, video).await.unwrap();
