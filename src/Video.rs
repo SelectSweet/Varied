@@ -63,15 +63,27 @@ pub async fn UploadVideo(
     let path = Path::new("/tmp").join(name.to_owned());
     let mut details: HashMap<String, CollectionValues> = HashMap::new();
 
-    details.insert("Ids".to_owned(), Collection::CollectionValues::String(PublicId.to_owned()));
-    details.insert("Type".to_owned(), Collection::CollectionValues::String("Video".to_string()));
+    details.insert(
+        "Ids".to_owned(),
+        Collection::CollectionValues::String(PublicId.to_owned()),
+    );
+    details.insert(
+        "Type".to_owned(),
+        Collection::CollectionValues::String("Video".to_string()),
+    );
 
     if CollectionId.is_some() {
-        details.insert("Collection_Id".to_owned(), Collection::CollectionValues::String(CollectionId.to_owned().unwrap()));
+        details.insert(
+            "Collection_Id".to_owned(),
+            Collection::CollectionValues::String(CollectionId.to_owned().unwrap()),
+        );
     }
 
     if addtoalbum == true {
-        details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
+        details.insert(
+            "AddToAlbum".to_owned(),
+            Collection::CollectionValues::String(true.to_string()),
+        );
     }
 
     let op = get_dal_op().await.unwrap();
@@ -94,40 +106,18 @@ pub async fn UploadVideo(
     Videos.push(PublicId.as_str().to_owned() + "_720.webm");
     Videos.push(PublicId.as_str().to_owned() + "_1280.webm");
 
+    Paths
+        .push(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str() + "/" + &Videos[0]);
+    Paths
+        .push(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str() + "/" + &Videos[1]);
+    Paths
+        .push(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str() + "/" + &Videos[2]);
 
-
-    Paths.push(
-        process.to_owned()
-            + "/"
-            + &VideoBucket
-            + "/"
-            + PublicId.as_str()
-            + "/"
-            + &Videos[0],
-    );
-    Paths.push(
-        process.to_owned()
-            + "/"
-            + &VideoBucket
-            + "/"
-            + PublicId.as_str()
-            + "/"
-            + &Videos[1],
-    );
-    Paths.push(
-        process.to_owned()
-            + "/"
-            + &VideoBucket
-            + "/"
-            + PublicId.as_str()
-            + "/"
-            + &Videos[2],
-    );
-
-    std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str()).unwrap();
+    std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str())
+        .unwrap();
 
     if title.is_none() {
-       Title.push_str(name.as_str())
+        Title.push_str(name.as_str())
     }
 
     let video_name = path.as_path().to_str().unwrap().to_string();
@@ -150,17 +140,23 @@ pub async fn UploadVideo(
             Username.to_owned(),
             true,
             false,
-            cookies.to_owned()
+            cookies.to_owned(),
         )
         .await;
-   
+
         let Poster_Url = object["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
 
         PosterVec.push(Poster_Url);
-
     }
 
     if addtocollection == true && CollectionId.is_some() {
+
+        let properties = json!({
+           "Poster": false,
+           "Album": false,
+           "Avatar": false
+        });
+
         let insert_details = v_media::ActiveModel {
             id: ActiveValue::Set(ID.to_owned()),
             publicid: ActiveValue::Set(PublicId.to_owned()),
@@ -171,8 +167,8 @@ pub async fn UploadVideo(
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
+            properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
 
@@ -189,7 +185,47 @@ pub async fn UploadVideo(
         return Ok((cookies, Json(result.to_string())));
     }
 
+    if addtoalbum == true && CollectionId.is_some() && addtocollection == false {
+        let properties = json!({
+            "Poster": false,
+            "Album": true,
+            "Avatar": false
+         });
+ 
+         let insert_details = v_media::ActiveModel {
+             id: ActiveValue::Set(ID.to_owned()),
+             publicid: ActiveValue::Set(PublicId.to_owned()),
+             title: ActiveValue::Set(Title.to_owned()),
+             mediatype: ActiveValue::Set(Media::MediaType::Video.to_string()),
+             uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+             username: ActiveValue::Set(Username.to_owned()),
+             description: ActiveValue::NotSet,
+             chapters: ActiveValue::NotSet,
+             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
+             storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
+             properties: ActiveValue::Set(Some(properties)),
+             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
+         };
+ 
+         insert_details.insert(&connection).await.unwrap();
+ 
+         let collection = add_to_collection(details, cookies.to_owned()).await;
+ 
+         let result = json!({
+             "Result": "Success",
+             "Publicid": PublicId.to_owned(),
+             "Collection_Publicid": collection["Publicid"]
+         });
+ 
+         return Ok((cookies, Json(result.to_string())));
+    }
+
     if addtocollection == false {
+        let properties = json!({
+            "Poster": false,
+            "Album": false,
+            "Avatar": false
+        });
         let insert_details = v_media::ActiveModel {
             id: ActiveValue::Set(ID.to_owned()),
             publicid: ActiveValue::Set(PublicId.to_owned()),
@@ -200,13 +236,12 @@ pub async fn UploadVideo(
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::NotSet,
+            storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
+            properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
 
         insert_details.insert(&connection).await.unwrap();
-
     } else {
         let result = json!({
             "Result": "Failure",
@@ -299,9 +334,10 @@ pub async fn UploadVideo(
         op.0.write(&to, video).await.unwrap();
 
         VideoInt = VideoInt + 1;
-    } 
+    }
 
-    std::fs::remove_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + &PublicId.to_owned()).unwrap();
+    std::fs::remove_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + &PublicId.to_owned())
+        .unwrap();
 
     let insert_video: Option<v_media::Model> = v_media::Entity::find()
         .filter(v_media::Column::Id.eq(ID))
