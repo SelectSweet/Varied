@@ -63,7 +63,7 @@ pub async fn UploadAudio(
     let Process = object["Process"].to_owned();
     let AudioBucket = object["Name"].to_owned();
 
-    let Username = get_session(cookies.clone()).await;
+    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");;
 
     let name = audio.metadata.file_name.unwrap();
     let filetype = audio.metadata.content_type.unwrap();
@@ -127,9 +127,11 @@ pub async fn UploadAudio(
         )
         .await;
 
-        let Poster_Url = object["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
+        let PosterUrls = Poster["Poster"].as_array().unwrap();
 
-        PosterVec.push(Poster_Url);
+        for u in PosterUrls {
+            PosterVec.push(u.to_string())
+        }
     }
 
     if addtocollection == false {
