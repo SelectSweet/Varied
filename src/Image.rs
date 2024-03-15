@@ -99,6 +99,12 @@ pub async fn ProcessImages(
     //     process.to_owned() + "/" + &ImageBucket + "/" + PublicID.to_owned().as_str() + "/" + images[0].as_str(),
     // );
 
+    let mut UploadPath: Vec<String> = Vec::new();
+
+    UploadPath.push(PublicID.as_str().to_owned()  + "/" + &images[0]);
+    // UploadPath.push(PublicID.as_str().to_owned()  + "/" + &images[1]);
+    // UploadPath.push(PublicID.as_str().to_owned()  + "/" + &images[2]);
+
     let oper = op.0;
     
     if addtoalbum == true {        
@@ -129,7 +135,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -226,7 +232,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -257,8 +263,8 @@ pub async fn ProcessImages(
             .arg(Paths[0].as_str())
             .spawn()
             .unwrap()
-            .iter()
-            .expect("Image Not comverted");
+            .wait()
+            .expect("Image Not converted");
 
         let properties = json!({
             "Poster": true,
@@ -274,15 +280,13 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
         let image: v_media::Model = image.insert(&connection).await.unwrap();
-
-        let PosterUrl = object["Endpoint"].to_string() + "/" + &images[0];
 
         PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await; 
 
@@ -291,7 +295,7 @@ pub async fn ProcessImages(
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
-            "Poster": PosterUrl
+            "Poster": UploadPath
         });
 
         return result;
@@ -307,7 +311,7 @@ pub async fn ProcessImages(
             .spawn()
             .unwrap()
             .wait()
-            .expect("Image Not comverted");
+            .expect("Image Not converted");
 
         let properties = json!({
             "Poster": false,
@@ -324,7 +328,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -367,7 +371,7 @@ pub async fn ProcessImages(
             .spawn()
             .unwrap()
             .wait()
-            .expect("Image Not comverted");
+            .expect("Image Not converted");
 
         let properties = json!({
             "Poster": false,
@@ -384,7 +388,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),

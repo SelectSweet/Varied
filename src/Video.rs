@@ -116,6 +116,13 @@ pub async fn UploadVideo(
     std::fs::create_dir_all(process.to_owned() + "/" + &VideoBucket + "/" + PublicId.as_str())
         .unwrap();
 
+    let mut UploadPath: Vec<String> = Vec::new();
+
+    UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Videos[0]);
+    UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Videos[1]);
+    UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Videos[2]);
+
+
     if title.is_none() {
         Title.push_str(name.as_str())
     }
@@ -144,9 +151,11 @@ pub async fn UploadVideo(
         )
         .await;
 
-        let Poster_Url = object["Endpoint"].to_owned() + &Poster["Publicid"].to_string().as_str();
+        let PosterUrls = Poster["Poster"].as_array().unwrap();
 
-        PosterVec.push(Poster_Url);
+        for u in PosterUrls {
+            PosterVec.push(u.as_str().unwrap().to_string())
+        }
     }
 
     if addtocollection == true && CollectionId.is_some() {
@@ -167,7 +176,7 @@ pub async fn UploadVideo(
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
@@ -202,7 +211,7 @@ pub async fn UploadVideo(
              description: ActiveValue::NotSet,
              chapters: ActiveValue::NotSet,
              poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-             storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
+             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
              properties: ActiveValue::Set(Some(properties)),
              state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
          };
@@ -236,7 +245,7 @@ pub async fn UploadVideo(
             description: ActiveValue::NotSet,
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            storagepathorurl: ActiveValue::Set(Some(Paths.to_owned())),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
@@ -316,23 +325,15 @@ pub async fn UploadVideo(
             }
         });
 
-    let mut UploadPaths: Vec<String> = Vec::new();
-
-    let ProcessFolder = process.to_owned() + "/" + PublicId.as_str();
-
-    UploadPaths.push(ProcessFolder.to_owned() + "/" + PublicId.as_str() + "_320.webm");
-    UploadPaths.push(ProcessFolder.to_owned() + "/" + PublicId.as_str() + "_720.webm");
-    UploadPaths.push(ProcessFolder.to_owned() + "/" + PublicId.as_str() + "_1280.webm");
-
     let mut VideoInt = 0;
 
     for p in Paths {
         let from = Path::new(p.as_str());
         let to = (PublicId.as_str().to_owned() + "/" + &Videos[VideoInt]);
         let video: Vec<u8> = fs::read(from).unwrap();
-
+    
         op.0.write(&to, video).await.unwrap();
-
+    
         VideoInt = VideoInt + 1;
     }
 
@@ -347,7 +348,7 @@ pub async fn UploadVideo(
 
     let mut insert_video: v_media::ActiveModel = insert_video.unwrap().into();
 
-    insert_video.storagepathorurl = Set(Some(UploadPaths));
+    insert_video.storagepathorurl = Set(Some(UploadPath));
 
     insert_video.state = Set(Media::MediaState::Published.to_string());
 
