@@ -234,7 +234,7 @@ pub async fn ProcessImages(
             username: ActiveValue::Set(username),
             description: ActiveValue::Set(Some(description)),
             chapters: ActiveValue::NotSet,
-            storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
             properties: ActiveValue::Set(Some(properties)),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
@@ -265,8 +265,8 @@ pub async fn ProcessImages(
             .arg(Paths[0].as_str())
             .spawn()
             .unwrap()
-            .iter()
-            .expect("Image Not comverted");
+            .wait()
+            .expect("Image Not converted");
 
         let properties = json!({
             "Poster": true,
@@ -300,7 +300,8 @@ pub async fn ProcessImages(
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
-            "Collection_Publicid": collection["Publicid"]
+            "Collection_Publicid": collection["Publicid"],
+            "Poster": UploadPath
         });
 
         return result;
@@ -316,7 +317,7 @@ pub async fn ProcessImages(
             .spawn()
             .unwrap()
             .wait()
-            .expect("Image Not comverted");
+            .expect("Image Not converted");
 
         let properties = json!({
             "Poster": false,
@@ -376,7 +377,7 @@ pub async fn ProcessImages(
             .spawn()
             .unwrap()
             .wait()
-            .expect("Image Not comverted");
+            .expect("Image Not converted");
 
         let properties = json!({
             "Poster": false,
