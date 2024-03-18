@@ -12,7 +12,8 @@ pub struct Config {
 #[derive(Deserialize)]
 pub struct Core {
     pub file_size_limit: String,
-    pub front_end_url: Url
+    pub front_end_url: Url,
+    pub main_url: String,
 }
 
 
@@ -199,4 +200,21 @@ pub fn get_object_config() -> HashMap<String, String> {
     
     // Returns Config Hashmap
     return Config   
+}
+
+pub fn get_core_config() -> (Url, Url, usize) {
+    // Reads config file
+    let CoreConfig = File::open("varied.toml");
+
+    // Gets CoreConfig Details from read config file then adds it to empty string
+    let mut Cstring = String::new();
+    CoreConfig.unwrap().read_to_string(&mut Cstring).unwrap();
+
+    // Converts Rstring to Config Struct then get front_end and main url from the struct
+    let read_config: Config = toml::from_str(&Cstring).unwrap();
+    let file_size = read_config.Core.file_size_limit.parse::<usize>().unwrap();
+    let front_end_url = Url::parse(read_config.Core.front_end_url.as_str()).unwrap();
+    let main_url = Url::parse(read_config.Core.main_url.as_str()).unwrap();
+
+    return (front_end_url, main_url, file_size);
 }
