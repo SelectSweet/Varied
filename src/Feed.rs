@@ -23,7 +23,7 @@ pub async fn feed(
     
     let Username = get_session(cookies.clone()).await.replace("\"", "");
 
-    let feed_query = format!("SELECT DISTINCT on (publicid) * FROM v_media INNER JOIN v_follow ON v_media.username = v_follow.following WHERE v_follow.follower = '{}';", Username);
+    let feed_query = format!("SELECT DISTINCT on (publicid) * FROM v_media INNER JOIN v_follow ON v_media.username = v_follow.following WHERE v_follow.follower = '{}' AND v_media.properties ->> 'Album' = 'false' AND v_media.properties  ->> 'Avatar' = 'false' AND v_media.properties ->> 'Poster' = 'false';", Username);
    
     let build_feed: Vec<Feed> = v_media::Entity::find()
     //.columns([ v_media::Column::Publicid, v_media::Column::Title, v_media::Column::Mediatype, v_media::Column::UploadedAt, v_media::Column::Username, v_media::Column::Description, v_media::Column::Chapters, v_media::Column::Properties])
