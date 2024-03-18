@@ -64,7 +64,10 @@ pub async fn Create_Text(
         "body": data.body.to_string(),
         "words": word_res,
         "lines": lines_res,
-        "charcters": charcters_res
+        "charcters": charcters_res,
+        "Poster": false,
+        "Album": false,
+        "Avatar": false
     });
 
     // gets the current datetime
