@@ -2,7 +2,7 @@
 url = "" # Your Database URL Goes here
 
 [Core]
-main_addr = "" # Main Listening Address
+main_url = "" # Main Listening Address
 file_size_limit = "" # File Size Limit
 front_end_url = "" # Front end URL Goes Here
 
