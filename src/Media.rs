@@ -64,8 +64,41 @@ impl fmt::Display for MediaState {
     }
 }
 
+// axum::http::Response<Body>
+#[debug_handler]
+pub async fn get_media_file(media: APath<HashMap<String, String>>) -> axum::http::Response<Body> {
+    let op = get_dal_op().await.unwrap();
+    let MediaPathStr = media.0["folder"].to_string() + "/" + &media.0["file"];
+    let read = op.0.read(MediaPathStr.as_str()).await.unwrap();
+    let name: Vec<&str> = MediaPathStr.split("/").collect();
+    let File_ext = Path::new(name[1]).extension().unwrap();
+    let file = format!("filename={}", name[1]);
+    let mut ext = String::new();
 
 
+    if File_ext == "webm" {
+       ext.push_str("video/webm");
+    }
+
+    if File_ext == "webp" {
+        ext.push_str("image/webp");
+    }
+
+    if File_ext == "flac" {
+        ext.push_str("audio/flac");
+    }
+
+    let headers = [
+        (header::CONTENT_TYPE, ext),
+        (
+          header::CONTENT_DISPOSITION,
+          file
+        )
+    ];
+    return (headers, Body::from(read)).into_response()
+
+    //return Json(fixedpath);
+}
 
 
 #[debug_handler]
@@ -73,10 +106,10 @@ pub async fn ViewMedia(
     cookies: CookieJar,
     //cookies: CookieJar,
     Query(data): Query<ViewDetails>,   
-) -> Either<Json<String>, Json<String>> {
+) -> Json<String> {
     let connection = establish_connection().await;
     if data.PublicId == "" {
-        return Either::E1(Json("A Media ID is required".to_string()));
+        return Json("A Media ID is required".to_string());
     }
 
     let ViewMedia = v_media::Entity::find().columns([
@@ -90,9 +123,43 @@ pub async fn ViewMedia(
         v_media::Column::Storagepathorurl,
         v_media::Column::Properties,
         v_media::Column::State]
-    ).filter(v_media::Column::Publicid.eq(data.PublicId)).into_json().one(&connection).await.unwrap();
+    ).filter(v_media::Column::Publicid.eq(data.PublicId)).into_json().one(&connection).await.unwrap().unwrap();
 
-    return Either::E2(Json(ViewMedia.unwrap().to_string()));
+    let ViewMediaV = ViewMedia.as_object().unwrap();
+    let mut MediaJ = json!(ViewMediaV);
+
+    
+
+    let mut MediaUrl: Vec<Value> = Vec::new();
+    let mut PosterUrl: Vec<Value> = Vec::new();
+
+    
+    let MediaResult = MediaJ.as_object_mut().unwrap();
+
+    MediaResult.remove("storagepathorurl");
+    MediaResult.remove("poster_storagepathorurl");
+    MediaResult.remove("id");
+
+    let MediaType = &ViewMedia["mediatype"];
+
+    if MediaType != "Note" && MediaType != "Text"  {
+        let Media: Vec<Value> = ViewMedia["storagepathorurl"].as_array().unwrap().to_vec();
+        let Poster: Vec<Value> = ViewMedia["poster_storagepathorurl"].as_array().unwrap().to_vec();
+        for l in Media {
+            MediaUrl.push(json!("http://localhost:8000".to_owned() + "/api/media/file/" + &l.to_owned().as_str().unwrap().replace("Cache/", "")));
+        }
+    
+        MediaResult.insert("Urls".to_string(), json!(MediaUrl));
+    
+        for p in Poster {
+            PosterUrl.push(json!("http://localhost:8000".to_owned() + "/api/media/file/" + &p.to_owned().as_str().unwrap().replace('"', "").replace("Cache/", "").replace("S3/", "")  ));
+        }
+    
+        MediaResult.insert("Posters".to_string(), json!(PosterUrl));
+    }  
+
+
+    return Json(json!(MediaResult).to_string());
 }
 
 pub async fn UpdateDetails(
