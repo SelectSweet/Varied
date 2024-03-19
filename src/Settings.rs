@@ -202,7 +202,7 @@ pub fn get_object_config() -> HashMap<String, String> {
     return Config   
 }
 
-pub fn get_core_config() -> (Url, Url, usize) {
+pub fn get_core_config() -> (Url, String, usize) {
     // Reads config file
     let CoreConfig = File::open("varied.toml");
 
@@ -214,7 +214,7 @@ pub fn get_core_config() -> (Url, Url, usize) {
     let read_config: Config = toml::from_str(&Cstring).unwrap();
     let file_size = read_config.Core.file_size_limit.parse::<usize>().unwrap();
     let front_end_url = Url::parse(read_config.Core.front_end_url.as_str()).unwrap();
-    let main_url = Url::parse(read_config.Core.main_url.as_str()).unwrap();
+    let main_url = read_config.Core.main_url;
 
     return (front_end_url, main_url, file_size);
 }
