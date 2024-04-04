@@ -22,6 +22,15 @@ pub struct ViewAccount {
     pub description: Option<String>,
 }
 
+#[derive(Deserialize, Serialize, Debug, FromQueryResult)]
+pub struct CardAccount {
+    pub username: String,
+    pub display_name: String,
+    pub avatar: String,
+    pub profile_metadata: Option<Value>,
+    pub description: Option<String>,
+}
+
 #[derive(TryFromMultipart)]
 pub struct AvatarUpload {
     #[form_data(limit = "unlimited")]
@@ -107,14 +116,15 @@ pub async fn create_account(Json(data): Json<Account>) -> impl IntoResponse {
     }
 }
 
+#[debug_handler]
 pub async fn view_account(
     cookies: CookieJar,
 ) -> Result<(CookieJar, Json<ViewAccount>), StatusCode> {
     // Database Connection
     let connection = establish_connection().await;
 
-    // Get Username from Session ID in Cookie
-    let Username = get_session(cookies.clone()).await;
+    // Get Username from Session ID in Cookie and push it to Username
+    let Username = get_session(cookies.to_owned()).await;    
 
     // Querys's the Account table, Select Username, Email, DisplayName, Avatar, ProfileMetadata and Description
 
@@ -141,13 +151,49 @@ pub async fn view_account(
     return Ok((cookies, AccountResult));
 }
 
-// pub struct AccountUpdate {
-//     password: Option<String>,
-//     email: Option<String>,
-//     display_name: Option<String>,
-//     profile_metadata: Option<Value>,
-//     description: Option<String>,
-// }
+#[derive(Deserialize)]
+pub struct AccountCard {
+    username: String
+}
+
+#[debug_handler]
+pub async fn account_card(Json(username): Json<AccountCard>) -> Json<String> {
+
+    // Database Connection
+    let connection = establish_connection().await;
+
+    let config = get_core_config();
+
+    let card = v_account::Entity::find()
+        .filter(v_account::Column::Username.eq(username.username))
+        .columns([
+            v_account::Column::Username,
+            v_account::Column::DisplayName,
+            v_account::Column::Avatar,
+            v_account::Column::ProfileMetadata,
+            v_account::Column::Description,
+        ])
+        .into_model::<CardAccount>()
+        .one(&connection)
+        .await
+        .unwrap().unwrap();
+    // http://localhost:8000/api/media/file/yBV6fYOyoGsMvw30TtBs/yBV6fYOyoGsMvw30TtBs_1280.webm
+
+    let avatar_url = "http://".to_owned() + &config.1 + "/api/media/file/" + &card.avatar.replace("\"", "");
+
+    let view_card = json!({
+        "Username": card.username.as_str(),
+        "DisplayName": card.display_name.as_str(),
+        "Avatar": Url::parse(avatar_url.as_str()).unwrap(),
+        "ProfileMetadata": card.profile_metadata.unwrap().as_str(),
+        "Description": card.description,
+    });
+
+    let CardResult = Json(view_card.to_string());
+
+    return CardResult;
+
+}
 
 enum AccountUpdateValue {
     Json(Value),
@@ -183,7 +229,7 @@ pub async fn update_avatar(
     let Avatar = ProcessImages(Image, Username, false, true, cookies.to_owned()).await;
     let AvatarUrlString = Avatar["Avatar"].to_string();
 
-    account.avatar = Set(Some(AvatarUrlString));
+    account.avatar = Set(Some(AvatarUrlString.as_str().to_string()));
 
     let account: v_account::Model = account.update(&connection).await.unwrap();   
     
@@ -209,8 +255,6 @@ pub async fn update_account(
         .await
         .unwrap();
     let mut account: v_account::ActiveModel = account.unwrap().into();
-
-    //let mut AvatarUrl = String::new();
 
     if data.password.is_some() {
         let password = account.password.to_owned().unwrap();
@@ -239,10 +283,6 @@ pub async fn update_account(
         }
     }
 
-    // else {
-    //     Account.insert("Password".to_string(), AccountUpdateValue::String("".to_string()));
-    // }
-
     if data.email.is_some() {
        let email = account.email.unwrap();
        let Email = data.email.unwrap();
@@ -253,13 +293,8 @@ pub async fn update_account(
 
        else {
          account.email = Set(Email);
-         //Account.insert("Email".to_string(), AccountUpdateValue::String(NewEmail));
        }       
     }
-
-    // else {
-    //     Account.insert("Email".to_string(), AccountUpdateValue::String("".to_string()));
-    // }
 
     if data.display_name.is_some() {
        let display_name = account.display_name.unwrap();
@@ -270,8 +305,6 @@ pub async fn update_account(
        }
 
        else {
-         //let New_Display_name = ActiveValue::Set(Display_name);
-         //Account.insert("Display_name".to_string(), AccountUpdateValue::String(Display_name));
          account.display_name = Set(Display_name);
        }  
     }
@@ -289,19 +322,11 @@ pub async fn update_account(
        }
 
        else {
-         //let NewDescription = ActiveValue::Set(Description);
-         //Account.insert("Description".to_string(), AccountUpdateValue::String(Description));
          account.description = Set(Some(Description));
        }  
     }
 
     let account: v_account::Model = account.update(&connection).await.unwrap();
-
-    // else {
-    //     Account.insert("Description".to_string(), AccountUpdateValue::String("".to_string()));
-    // }
-
-
 
     let AccountResult = Json("Success".to_string());
 

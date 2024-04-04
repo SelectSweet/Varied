@@ -109,6 +109,7 @@ async fn main() {
         .route("/api/account", get(Account::view_account))
         .route("/api/account", patch(Account::update_account))
         .route("/api/account/avatar", patch(Account::update_avatar))
+        .route("/api/account/card", post(Account::account_card))
         .route("/api/login", post(Login::login))
         .route("/api/logout", post(Login::logout))
         .route("/api/follow", post(Follow::follow))
