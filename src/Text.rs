@@ -57,7 +57,7 @@ pub async fn Create_Text(
     if charcters_res < 501 {
         text_type.push_str("Note")
     } else {
-        text_type.push_str("Text")
+        text_type.push_str("Article")
     }
 
     let properties = json!({
@@ -84,7 +84,7 @@ pub async fn Create_Text(
         chapters: ActiveValue::NotSet, 
         storagepathorurl: ActiveValue::NotSet,
         poster_storagepathorurl: ActiveValue::Set(data.poster),
-        properties: ActiveValue::Set(Some(properties)), 
+        properties: ActiveValue::Set(properties), 
         state: ActiveValue::Set(Media::MediaState::Published.to_string()), 
     };
 
