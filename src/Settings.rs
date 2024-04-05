@@ -181,7 +181,7 @@ pub fn get_object_config() -> HashMap<String, String> {
     // Reads config file
     let object = File::open("varied.toml");
 
-    // Gets RClone Details from read config file then adds it to empty string
+    // Gets Object Details from read config file then adds it to empty string
     let mut Ostring = String::new();
     object.unwrap().read_to_string(&mut Ostring).unwrap();
 

@@ -31,7 +31,7 @@ pub struct Media {
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub enum MediaType {
     Note,
-    Text,
+    Article,
     Audio,
     Video,
 }
@@ -40,7 +40,7 @@ impl fmt::Display for MediaType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MediaType::Note => write!(f, "Note"),
-            MediaType::Text => write!(f, "Text"),
+            MediaType::Article => write!(f, "Article"),
             MediaType::Audio => write!(f, "Audio"),
             MediaType::Video => write!(f, "Video"),
         }
