@@ -177,7 +177,7 @@ pub async fn UploadVideo(
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
 
@@ -212,7 +212,7 @@ pub async fn UploadVideo(
              chapters: ActiveValue::NotSet,
              poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
              storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
-             properties: ActiveValue::Set(Some(properties)),
+             properties: ActiveValue::Set(properties),
              state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
          };
  
@@ -246,7 +246,7 @@ pub async fn UploadVideo(
             chapters: ActiveValue::NotSet,
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
 

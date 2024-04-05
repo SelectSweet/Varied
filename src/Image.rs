@@ -137,7 +137,7 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
@@ -188,7 +188,7 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(vec![images[0].to_owned()])),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
@@ -236,7 +236,7 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
@@ -284,7 +284,7 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
@@ -336,15 +336,15 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
-        let PosterUrl = object["Endpoint"].to_string() + "/" + &images[0];
+        let PosterUrl = PublicID.as_str().to_owned() + "/" + &images[0];
 
-        let to = (PublicID.as_str().to_owned() + "/" + &images[0]);
+        //let PosterUrl = object["Endpoint"].to_string() + "/" + &to;
 
         PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;           
     
@@ -396,7 +396,7 @@ pub async fn ProcessImages(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::NotSet,
-            properties: ActiveValue::Set(Some(properties)),
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Published.to_string()),
         };
 

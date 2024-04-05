@@ -159,11 +159,11 @@ pub async fn UploadAudio(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec.to_owned())),
-            properties: ActiveValue::NotSet,
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
     
-        let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
+        insert_details.insert(&connection).await.unwrap();
     }
 
     if addtocollection == true && CollectionId.is_some() {
@@ -185,11 +185,11 @@ pub async fn UploadAudio(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            properties: ActiveValue::NotSet,
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
     
-        let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
+        insert_details.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details, cookies.to_owned()).await;
     
@@ -222,11 +222,11 @@ pub async fn UploadAudio(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            properties: ActiveValue::NotSet,
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
     
-        let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
+        insert_details.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details, cookies.to_owned()).await;
     
@@ -259,11 +259,11 @@ pub async fn UploadAudio(
             chapters: ActiveValue::NotSet,
             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-            properties: ActiveValue::NotSet,
+            properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
     
-        let insert_details: v_media::Model = insert_details.insert(&connection).await.unwrap();
+        insert_details.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details, cookies.to_owned()).await;
     
@@ -306,19 +306,7 @@ pub async fn UploadAudio(
                     Update_Progress(PublicID.to_owned(), total_progress.to_owned());
             }
         });
-     
-    let from = Paths[0].to_owned();
-    let FromPath = Path::new(from.as_str());
-    let to = (PublicID.as_str().to_owned() + "/" + &Audios[0]);
-    let audio: Vec<u8> = fs::read(FromPath.to_owned()).unwrap();
-    op.0.write(&to, audio).await.unwrap();  
-
-    
-
-    let mut UploadPaths: Vec<String> = Vec::new();
-
-    let ProcessFolder = Process.to_owned() + "/" + &AudioBucket;
-
+   
     // let mut AudioInt = 0;
 
     // for p in Paths {
@@ -338,7 +326,7 @@ pub async fn UploadAudio(
     let audio: Vec<u8> = fs::read(FromPath.to_owned()).unwrap();
     op.0.write(&to, audio).await.unwrap();  
 
-    std::fs::remove_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
+    //std::fs::remove_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
 
     let insert_audio: Option<v_media::Model> = v_media::Entity::find()
         .filter(v_media::Column::Id.eq(ID))
