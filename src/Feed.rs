@@ -10,7 +10,7 @@ pub struct Feed {
     pub username: String,
     pub description: Option<String>,
     pub chapters: Option<Value>,
-    pub properties: Option<Value>
+    pub properties: Value
 }
 
 #[debug_handler]
@@ -23,9 +23,9 @@ pub async fn feed(
     
     let Username = get_session(cookies.clone()).await.replace("\"", "");
 
-    let feed_query = format!("SELECT DISTINCT on (publicid) * FROM v_media INNER JOIN v_follow ON v_media.username = v_follow.following WHERE v_follow.follower = '{}' AND v_media.properties ->> 'Album' = 'false' AND v_media.properties  ->> 'Avatar' = 'false' AND v_media.properties ->> 'Poster' = 'false';", Username);
+    let feed_query = format!("SELECT DISTINCT on (publicid) v_media.publicid, v_media.title, v_media.mediatype, v_media.uploaded_at, v_media.username, v_media.description, v_media.properties FROM v_media INNER JOIN v_follow ON v_media.username = v_follow.following WHERE v_follow.follower = '{}' AND v_media.properties ->> 'Album' = 'false' AND v_media.properties  ->> 'Avatar' = 'false' AND v_media.properties ->> 'Poster' = 'false';", Username);
    
-    let build_feed: Vec<Feed> = v_media::Entity::find()
+    let build_feed = v_media::Entity::find()
     //.columns([ v_media::Column::Publicid, v_media::Column::Title, v_media::Column::Mediatype, v_media::Column::UploadedAt, v_media::Column::Username, v_media::Column::Description, v_media::Column::Chapters, v_media::Column::Properties])
     //.filter(v_media::Column::Username.eq(Username.replace("\"", "")))    
     .from_raw_sql(
