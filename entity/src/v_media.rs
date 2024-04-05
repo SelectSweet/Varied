@@ -22,7 +22,7 @@ pub struct Model {
     pub chapters: Option<Json>,
     pub storagepathorurl: Option<Vec<String>>,
     pub poster_storagepathorurl: Option<Vec<String>>,
-    pub properties: Option<Json>,
+    pub properties: Json,
     #[sea_orm(column_type = "Text")]
     pub state: String,
 }

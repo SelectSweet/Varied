@@ -45,7 +45,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(v_media::Chapters).json())
                     .col(ColumnDef::new(v_media::Storagepathorurl).array(table::ColumnType::Text))
                     .col(ColumnDef::new(v_media::PosterStoragepathorurl).array(table::ColumnType::Text))
-                    .col(ColumnDef::new(v_media::Properties).json())
+                    .col(ColumnDef::new(v_media::Properties).json().not_null())
                     .col(ColumnDef::new(v_media::State).text().not_null())    
                     .to_owned()                    
             );
