@@ -120,6 +120,7 @@ async fn main() {
         .route("/api/media", get(Media::ViewMedia))
         .route("/api/media/file/:folder/:file", get(Media::get_media_file))
         .route("/api/text", post(Text::Create_Text))
+        .route("/api/text", patch(Text::UpdateText))
         .route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(core.2))
         .route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(core.2))
         .route("/api/image", post(Image::UploadImage)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(core.2))

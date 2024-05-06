@@ -26,11 +26,23 @@ fn word_count(Text: String) -> [i64; 3] {
     return results;
 }
 
-#[derive(Deserialize, Serialize)]
+
+#[derive(TryFromMultipart, Deserialize)]
 pub struct Text {
     pub title: String,
     pub body: String,
-    pub poster: Option<Vec<String>>, 
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct UpdateText {
+    pub PublicId: String,
+    pub title: Option<String>,
+    pub body: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct DeleteText {
+    pub PublicId: String,
 }
 
 
@@ -73,6 +85,9 @@ pub async fn Create_Text(
     // gets the current datetime
     let now = Utc::now();
 
+    //let mut poster: Vec<String> = Vec::new(); 
+    //poster.push(data.poster.unwrap()); // replace this with the poster function
+
     let insert_details = v_media::ActiveModel { 
         id: ActiveValue::Set(ID), 
         publicid: ActiveValue::Set(PublicId), 
@@ -83,7 +98,7 @@ pub async fn Create_Text(
         description: ActiveValue::NotSet, 
         chapters: ActiveValue::NotSet, 
         storagepathorurl: ActiveValue::NotSet,
-        poster_storagepathorurl: ActiveValue::Set(data.poster),
+        poster_storagepathorurl: ActiveValue::NotSet, // Change this to ActiveValue::Set(Some(poster)) when poster is fixed
         properties: ActiveValue::Set(properties), 
         state: ActiveValue::Set(Media::MediaState::Published.to_string()), 
     };
@@ -96,7 +111,44 @@ pub async fn Create_Text(
     ));
 }
 
-pub async fn UpdateText() {
-    unimplemented!();
+pub async fn UpdateText(
+    cookies: CookieJar,
+    Json(data): Json<UpdateText>
+) -> Json<String> {
+    let connection = establish_connection().await;
+    let id = data.PublicId;
+
+    let mut Text = v_media::Entity::find()
+       .filter(v_media::Column::Publicid.eq(id.to_owned()))
+       .into_json()
+       .one(&connection).await.unwrap().unwrap();
+
+    let TextObject = Text.as_object_mut().unwrap();
+
+    let mut Properties = TextObject["properties"].to_owned();   
+
+
+    if Some(id.to_owned()).is_some() && Some(data.body.to_owned()).is_some() {
+       Properties["body"] = json!(data.body.unwrap());
+       let Updated = format!("{} Has Been updated", id.to_owned());
+       return Json(Updated.to_string());
+    }
+
+    else {
+        return Json("An ID and Text Body are Required".to_string())
+    }
+}
+
+pub async fn DeleteText(
+    cookies: CookieJar,
+    Json(data): Json<DeleteText>
+) {
+    let connection = establish_connection().await;
+    let id = data.PublicId;
+    let mut Text = v_media::Entity::find()
+       .filter(v_media::Column::Publicid.eq(id.to_owned()))
+       .into_json()
+       .one(&connection).await.unwrap().unwrap();
+    
 }
 
