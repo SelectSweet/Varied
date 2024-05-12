@@ -3,6 +3,7 @@
 pub mod prelude;
 
 pub mod v_account;
+pub mod v_biscuitkey;
 pub mod v_collection;
 pub mod v_follow;
 pub mod v_media;
