@@ -11,7 +11,7 @@ pub struct Model {
         auto_increment = false,
         column_type = "Binary(BlobSize::Blob(None))"
     )]
-    pub private_key: Vec<u8>,
+    pub key: Vec<u8>,
     pub username: String,
 }
 

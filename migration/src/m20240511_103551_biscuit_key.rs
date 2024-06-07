@@ -11,7 +11,7 @@ impl MigrationTrait for Migration {
             .create_table(
                 Table::create()
                     .table(v_biscuitkey::Table)
-                    .col(ColumnDef::new(v_biscuitkey::PrivateKey).binary().not_null().primary_key())
+                    .col(ColumnDef::new(v_biscuitkey::Key).binary().not_null().primary_key())
                     .col(ColumnDef::new(v_biscuitkey::Username).string().not_null())
                     .to_owned(),
             )
@@ -29,7 +29,6 @@ impl MigrationTrait for Migration {
 #[derive(DeriveIden)]
 enum v_biscuitkey {
     Table,
-    Id,
-    PrivateKey,
+    Key,
     Username,
 }
