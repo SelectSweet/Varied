@@ -44,7 +44,9 @@ pub async fn login(
     if username == SelectAccount["username"].as_str().unwrap() {
         if argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok()
         {
-            let session_id = encode_base64_id(Uuid::new_v4().to_string());
+            //let session_id = encode_base64_id(Uuid::new_v4().to_string());
+            
+            let session_id = create_token(username.to_owned()).await.to_string();
 
             let session = v_session::ActiveModel { 
                 session_id: ActiveValue::Set(session_id.to_owned()), 
@@ -57,7 +59,7 @@ pub async fn login(
 
             return Ok((
                 c,
-                Json(session_id.to_owned())
+                Json("Login successful".to_string())
             ));
 
         } else {

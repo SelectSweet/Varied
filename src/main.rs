@@ -58,7 +58,12 @@ use std::fs;
 
 use crate::Image::ProcessImages;
 
-use entity::{v_account, v_follow, v_media, v_session, v_task, v_collection};
+use entity::{v_account, v_follow, v_media, v_session, v_task, v_collection, v_biscuitkey};
+
+use biscuit_auth::{macros::{authorizer, biscuit}, Biscuit, KeyPair, PrivateKey, Authorizer, PublicKey};
+use sea_orm::Insert;
+
+
 
 mod Account;
 mod Feed;
@@ -72,10 +77,12 @@ mod Image;
 mod Audio;
 mod Collection;
 mod Settings;
+mod Auth;
 
 use Task::{Create_Progress, Update_Progress};
 use Collection::{add_to_collection, CollectionValues};
 use Settings::{get_dal_op, get_session, make_sqid, establish_connection, encode_base64_id, get_object_config, random_nums, get_core_config};
+use Auth::BiscuitToken::{create_key, create_token, get_key, AllMediaVerify, FeedVerify, VerifyAllMedia};
 
 
 #[tokio::main]
@@ -91,7 +98,6 @@ async fn main() {
         core.0.as_str().parse::<HeaderValue>().unwrap(),
         feed_cors_url.as_str().parse::<HeaderValue>().unwrap(),
     ];
-
     
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS, Method::HEAD])

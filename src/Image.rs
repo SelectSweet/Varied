@@ -435,6 +435,8 @@ pub async fn UploadImage(
         title,
     }): TypedMultipart<ImageUpload>,
 ) -> Json<String> {
+
+    
     let Username = get_session(cookies.clone())
         .await
         .replace("'", "")

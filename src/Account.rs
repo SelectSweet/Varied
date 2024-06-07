@@ -106,6 +106,9 @@ pub async fn create_account(Json(data): Json<Account>) -> impl IntoResponse {
             description: ActiveValue::Set(data.description),
         };
 
+        // Creates Biscuit KeyPair
+        create_key(data.username).await;
+
         // insert the CreateAccount ActiveModel into the database
         CreateAccount.insert(&connect).await.unwrap();
 

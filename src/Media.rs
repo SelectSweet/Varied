@@ -64,7 +64,7 @@ impl fmt::Display for MediaState {
     }
 }
 
-// axum::http::Response<Body>
+
 #[debug_handler]
 pub async fn get_media_file(media: APath<HashMap<String, String>>) -> axum::http::Response<Body> {
     let op = get_dal_op().await.unwrap();
@@ -165,12 +165,12 @@ pub async fn ViewMedia(
 pub async fn UpdateDetails(
     cookies: CookieJar,
     Json(data): Json<UpdateDetails>,
-) -> String {
-    let Username = get_session(cookies).await;
+) -> Result<(CookieJar, String), StatusCode> {
+    let Username = get_session(cookies.to_owned()).await;
     let connection = establish_connection().await;
 
     if data.PublicId == "" {
-        return "A Media ID is required".to_string();
+        return Ok((cookies, "A Media ID is required".to_string()));
     }
 
     let details: Option<v_media::Model> = v_media::Entity::find()
@@ -179,20 +179,32 @@ pub async fn UpdateDetails(
 
     let mut details: v_media::ActiveModel = details.unwrap().into();
 
-    if data.title != None {
-        details.title = Set(data.title.unwrap());
-    }
- 
-    if data.description != None {
-         details.description = Set(data.description);
-    }
- 
-    if data.chapters != None {
-        details.chapters = Set(data.chapters);
+    let token = VerifyAllMedia(
+        Username, 
+        cookies.to_owned(), 
+        details.username.take().to_owned().unwrap(),
+        details.id.take().to_owned().unwrap()
+    ).await;
+    
+    if token.0.authorize(&token.1).is_ok() {
+        if data.title != None {
+            details.title = Set(data.title.unwrap());
+        }
+     
+        if data.description != None {
+             details.description = Set(data.description);
+        }
+     
+        if data.chapters != None {
+            details.chapters = Set(data.chapters);
+        }
+    
+        details.update(&connection).await.unwrap();
+    
+        return Ok((cookies, "Media has been Updated".to_string()));
     }
 
-    details.update(&connection).await.unwrap();
-
-
-    return "Media has been Updated".to_string();
+    else {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
 }

@@ -63,7 +63,7 @@ pub async fn UploadAudio(
     let Process = object["Process"].to_owned();
     let AudioBucket = object["Name"].to_owned();
 
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");;
+    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
 
     let name = audio.metadata.file_name.unwrap();
     let filetype = audio.metadata.content_type.unwrap();
