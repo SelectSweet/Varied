@@ -34,3 +34,4 @@ sqids = "0.3.1"
 tempfile = "3.9.0"
 axum_typed_multipart = "0.11.0"
 opendal = { version = "0.45.0", features = [ "services-http" ] }
+biscuit-auth = { version = "4.1.1", features = [ "bwk" ] }
