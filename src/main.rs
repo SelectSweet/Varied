@@ -1,50 +1,50 @@
 use rand::{thread_rng, Rng};
 use sea_orm::{
-    DatabaseConnection, 
-    Database, 
-    ConnectOptions, 
-    ActiveModelTrait, 
-    prelude::DateTime, 
-    EntityTrait, 
-    ColumnTrait, 
-    QueryFilter, 
-    QuerySelect, 
-    Set, 
-    ActiveValue,
-    ModelTrait,
-    DbBackend, Statement
+    prelude::DateTime, ActiveModelTrait, ActiveValue, ColumnTrait, ConnectOptions, Database,
+    DatabaseConnection, DbBackend, EntityTrait, ModelTrait, QueryFilter, QuerySelect, Set,
+    Statement,
 };
 
+use base64::{engine::general_purpose, *};
+use chrono::{NaiveDateTime, Utc};
 use sea_orm::{Condition, FromQueryResult};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
-use sqids::{Sqids, Options};
-use std::{fs::File, io::Read, fmt, collections::HashMap, process::{Command, Stdio}, fmt::Display,};
+use serde_json::{json, Value};
+use sqids::{Options, Sqids};
+use std::sync::OnceLock;
+use std::{
+    collections::HashMap,
+    fmt,
+    fmt::Display,
+    fs::File,
+    io::Read,
+    process::{Command, Stdio},
+};
 use url::Url;
-use base64::{*, engine::general_purpose};
-use chrono::{NaiveDateTime, Utc};
-
 
 use axum::{
-    extract::{DefaultBodyLimit, Query, Path as APath},
-    http::{header::*, Method, StatusCode, header},
+    body::Body,
+    debug_handler,
+    extract::{DefaultBodyLimit, Path as APath, Query},
+    http::{header, header::*, Method, StatusCode},
     response::IntoResponse,
     routing::{get, patch, post},
-    body::Body,
-    Json, Router, debug_handler,
+    Json, Router,
 };
 
-use axum_extra::extract::cookie::Cookie as CookieJ;
-use axum_extra::extract::CookieJar;
+use tower_cookies::{Cookie, CookieManagerLayer, Cookies, Key};
+
+// use axum_extra::extract::cookie::Cookie as CookieJ;
+// use axum_extra::extract::CookieJar;
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
 use tempfile::NamedTempFile;
 
-use tower_http::{
-    cors::CorsLayer, 
-    limit::RequestBodyLimitLayer,
-};
+use tower_http::{cors::CorsLayer, limit::RequestBodyLimitLayer};
 
-use argon2::{password_hash::{SaltString, rand_core::OsRng}, Argon2, PasswordHasher, PasswordHash, PasswordVerifier};
+use argon2::{
+    password_hash::{rand_core::OsRng, SaltString},
+    Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
+};
 use uuid::Uuid;
 
 use ffmpeg_sidecar::{command::FfmpegCommand, event::FfmpegProgress};
@@ -53,41 +53,52 @@ use std::path::Path;
 
 use migration::{Migrator, MigratorTrait};
 
-use opendal::{services::{S3, Http}, Operator};
+use opendal::{
+    services::{Http, S3},
+    Operator,
+};
 use std::fs;
 
 use crate::Image::ProcessImages;
 
-use entity::{v_account, v_follow, v_media, v_session, v_task, v_collection, v_biscuitkey};
+use entity::{
+    v_account, v_biscuitkey, v_collection, v_follow, v_media, v_session, v_task, v_towersession,
+};
 
-use biscuit_auth::{macros::{authorizer, biscuit}, Biscuit, KeyPair, PrivateKey, Authorizer, PublicKey};
+use biscuit_auth::{
+    macros::{authorizer, biscuit},
+    Authorizer, Biscuit, KeyPair, PrivateKey, PublicKey,
+};
 use sea_orm::Insert;
 
-
+static SessionKey: OnceLock<Vec<u8>> = OnceLock::new();
 
 mod Account;
+mod Audio;
+mod Auth;
+mod Collection;
 mod Feed;
 mod Follow;
+mod Image;
 mod Login;
 mod Media;
-mod Text;
-mod Task;
-mod Video;
-mod Image;
-mod Audio;
-mod Collection;
 mod Settings;
-mod Auth;
+mod Task;
+mod Text;
+mod Video;
 
-use Task::{Create_Progress, Update_Progress};
+use Auth::BiscuitToken::{
+    create_key, create_token, get_key, AllMediaVerify, FeedVerify, VerifyAllMedia,
+};
 use Collection::{add_to_collection, CollectionValues};
-use Settings::{get_dal_op, get_session, make_sqid, establish_connection, encode_base64_id, get_object_config, random_nums, get_core_config};
-use Auth::BiscuitToken::{create_key, create_token, get_key, AllMediaVerify, FeedVerify, VerifyAllMedia};
-
+use Settings::{
+    encode_base64_id, establish_connection, get_core_config, get_dal_op, get_object_config,
+    get_session, make_sqid, random_nums,
+};
+use Task::{Create_Progress, Update_Progress};
 
 #[tokio::main]
 async fn main() {
-
     // Returns Core Settings as a tuple values are front_end_url, main_url, file_size in that order
     let core = get_core_config();
 
@@ -98,16 +109,26 @@ async fn main() {
         core.0.as_str().parse::<HeaderValue>().unwrap(),
         feed_cors_url.as_str().parse::<HeaderValue>().unwrap(),
     ];
-    
+
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS, Method::HEAD])
         .allow_origin(origins)
-        .allow_headers([ORIGIN, ACCESS_CONTROL_REQUEST_HEADERS, CONTENT_TYPE, COOKIE, ACCESS_CONTROL_ALLOW_ORIGIN, ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_CREDENTIALS])
+        .allow_headers([
+            ORIGIN,
+            ACCESS_CONTROL_REQUEST_HEADERS,
+            CONTENT_TYPE,
+            COOKIE,
+            ACCESS_CONTROL_ALLOW_ORIGIN,
+            ACCESS_CONTROL_ALLOW_HEADERS,
+            ACCESS_CONTROL_ALLOW_CREDENTIALS,
+        ])
         .allow_credentials(true)
-        .expose_headers([CONTENT_TYPE, COOKIE, ACCESS_CONTROL_REQUEST_HEADERS, ACCESS_CONTROL_ALLOW_HEADERS])
-        ;
-        
-
+        .expose_headers([
+            CONTENT_TYPE,
+            COOKIE,
+            ACCESS_CONTROL_REQUEST_HEADERS,
+            ACCESS_CONTROL_ALLOW_HEADERS,
+        ]);
 
     // Main Application Router that Routes each Request to its matching function
     let app = Router::new()
@@ -127,20 +148,29 @@ async fn main() {
         .route("/api/media/file/:folder/:file", get(Media::get_media_file))
         .route("/api/text", post(Text::Create_Text))
         .route("/api/text", patch(Text::UpdateText))
-        .route("/api/video", post(Video::UploadVideo)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(core.2))
-        .route("/api/audio", post(Audio::UploadAudio)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(core.2))
-        .route("/api/image", post(Image::UploadImage)).layer(DefaultBodyLimit::disable()).layer(RequestBodyLimitLayer::new(core.2))
+        .route("/api/video", post(Video::UploadVideo))
+        .layer(DefaultBodyLimit::disable())
+        .layer(RequestBodyLimitLayer::new(core.2))
+        .route("/api/audio", post(Audio::UploadAudio))
+        .layer(DefaultBodyLimit::disable())
+        .layer(RequestBodyLimitLayer::new(core.2))
+        .route("/api/image", post(Image::UploadImage))
+        .layer(DefaultBodyLimit::disable())
+        .layer(RequestBodyLimitLayer::new(core.2))
         .route("/api/collection", post(Collection::Create_Collection))
         .route("/api/collection/add", post(Collection::Update_Collection))
         .route("/api/feed", get(Feed::feed))
         .route("/api/tasks", get(Task::list_tasks))
         .layer(cors)
-        ;
+        .layer(CookieManagerLayer::new());
 
-    
     println!("listening on {}", core.1);
 
-    let listener = tokio::net::TcpListener::bind(core.1.as_str()).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(core.1.as_str())
+        .await
+        .unwrap();
 
-    axum::serve(listener, app.into_make_service()).await.unwrap()
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap()
 }

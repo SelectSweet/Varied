@@ -9,3 +9,4 @@ pub mod v_follow;
 pub mod v_media;
 pub mod v_session;
 pub mod v_task;
+pub mod v_towersession;

@@ -7,6 +7,7 @@ mod m20231110_081234_session;
 mod m20231110_081239_task;
 mod m20240109_114821_collection;
 mod m20240511_103551_biscuit_key;
+mod m20240727_090310_tower_session;
 
 pub struct Migrator;
 
@@ -21,6 +22,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20231110_081239_task::Migration),
             Box::new(m20240109_114821_collection::Migration),
             Box::new(m20240511_103551_biscuit_key::Migration),
+            Box::new(m20240727_090310_tower_session::Migration),
         ]
     }
 }

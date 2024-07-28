@@ -7,3 +7,4 @@ pub use super::v_follow::Entity as VFollow;
 pub use super::v_media::Entity as VMedia;
 pub use super::v_session::Entity as VSession;
 pub use super::v_task::Entity as VTask;
+pub use super::v_towersession::Entity as VTowersession;

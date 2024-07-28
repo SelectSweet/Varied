@@ -40,7 +40,7 @@ pub struct VideoUpload {
 
 #[debug_handler]
 pub async fn UploadVideo(
-    cookies: CookieJar,
+    cookies: Cookies,
     TypedMultipart(VideoUpload {
         video,
         poster,
@@ -50,7 +50,7 @@ pub async fn UploadVideo(
         Description,
         CollectionId,
     }): TypedMultipart<VideoUpload>, //mut multipart: Multipart,
-) -> Result<(CookieJar, Json<String>), StatusCode> {
+) -> Result<Json<String>, StatusCode> {
     let connection = establish_connection().await;
 
     let ID = Uuid::new_v4().to_string();
@@ -118,10 +118,9 @@ pub async fn UploadVideo(
 
     let mut UploadPath: Vec<String> = Vec::new();
 
-    UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Videos[0]);
-    UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Videos[1]);
-    UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Videos[2]);
-
+    UploadPath.push(PublicId.as_str().to_owned() + "/" + &Videos[0]);
+    UploadPath.push(PublicId.as_str().to_owned() + "/" + &Videos[1]);
+    UploadPath.push(PublicId.as_str().to_owned() + "/" + &Videos[2]);
 
     if title.is_none() {
         Title.push_str(name.as_str())
@@ -159,7 +158,6 @@ pub async fn UploadVideo(
     }
 
     if addtocollection == true && CollectionId.is_some() {
-
         let properties = json!({
            "Poster": false,
            "Album": false,
@@ -191,42 +189,42 @@ pub async fn UploadVideo(
             "Collection_Publicid": collection["Publicid"]
         });
 
-        return Ok((cookies, Json(result.to_string())));
+        return Ok(Json(result.to_string()));
     }
 
     if addtoalbum == true && CollectionId.is_some() && addtocollection == false {
         let properties = json!({
-            "Poster": false,
-            "Album": true,
-            "Avatar": false
-         });
- 
-         let insert_details = v_media::ActiveModel {
-             id: ActiveValue::Set(ID.to_owned()),
-             publicid: ActiveValue::Set(PublicId.to_owned()),
-             title: ActiveValue::Set(Title.to_owned()),
-             mediatype: ActiveValue::Set(Media::MediaType::Video.to_string()),
-             uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
-             username: ActiveValue::Set(Username.to_owned()),
-             description: ActiveValue::NotSet,
-             chapters: ActiveValue::NotSet,
-             poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
-             storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
-             properties: ActiveValue::Set(properties),
-             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
-         };
- 
-         insert_details.insert(&connection).await.unwrap();
- 
-         let collection = add_to_collection(details, cookies.to_owned()).await;
- 
-         let result = json!({
-             "Result": "Success",
-             "Publicid": PublicId.to_owned(),
-             "Collection_Publicid": collection["Publicid"]
-         });
- 
-         return Ok((cookies, Json(result.to_string())));
+           "Poster": false,
+           "Album": true,
+           "Avatar": false
+        });
+
+        let insert_details = v_media::ActiveModel {
+            id: ActiveValue::Set(ID.to_owned()),
+            publicid: ActiveValue::Set(PublicId.to_owned()),
+            title: ActiveValue::Set(Title.to_owned()),
+            mediatype: ActiveValue::Set(Media::MediaType::Video.to_string()),
+            uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
+            username: ActiveValue::Set(Username.to_owned()),
+            description: ActiveValue::NotSet,
+            chapters: ActiveValue::NotSet,
+            poster_storagepathorurl: ActiveValue::Set(Some(PosterVec)),
+            storagepathorurl: ActiveValue::Set(Some(UploadPath.to_owned())),
+            properties: ActiveValue::Set(properties),
+            state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
+        };
+
+        insert_details.insert(&connection).await.unwrap();
+
+        let collection = add_to_collection(details, cookies.to_owned()).await;
+
+        let result = json!({
+            "Result": "Success",
+            "Publicid": PublicId.to_owned(),
+            "Collection_Publicid": collection["Publicid"]
+        });
+
+        return Ok(Json(result.to_string()));
     }
 
     if addtocollection == false {
@@ -257,7 +255,7 @@ pub async fn UploadVideo(
             "Publicid": PublicId.to_owned()
         });
 
-        return Ok((cookies, Json(result.to_string())));
+        return Ok(Json(result.to_string()));
     }
 
     let total_frames = VideoFrames(&video_name.clone()).parse::<u32>().unwrap();
@@ -331,9 +329,9 @@ pub async fn UploadVideo(
         let from = Path::new(p.as_str());
         let to = (PublicId.as_str().to_owned() + "/" + &Videos[VideoInt]);
         let video: Vec<u8> = fs::read(from).unwrap();
-    
+
         op.0.write(&to, video).await.unwrap();
-    
+
         VideoInt = VideoInt + 1;
     }
 
@@ -359,5 +357,5 @@ pub async fn UploadVideo(
         "PublicID": PublicId
     });
 
-    return Ok((cookies, Json(results.to_string())));
+    return Ok(Json(results.to_string()));
 }

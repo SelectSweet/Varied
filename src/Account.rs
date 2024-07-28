@@ -1,3 +1,5 @@
+use Settings::Create_Tower_Key;
+
 use self::Image::{ImageUpload, ProcessImages};
 
 use super::*;
@@ -107,7 +109,10 @@ pub async fn create_account(Json(data): Json<Account>) -> impl IntoResponse {
         };
 
         // Creates Biscuit KeyPair
-        create_key(data.username).await;
+        create_key(data.username.to_owned()).await;
+
+        // Creates Tower Sessions Key
+        Create_Tower_Key(data.username).await;
 
         // insert the CreateAccount ActiveModel into the database
         CreateAccount.insert(&connect).await.unwrap();
@@ -120,14 +125,12 @@ pub async fn create_account(Json(data): Json<Account>) -> impl IntoResponse {
 }
 
 #[debug_handler]
-pub async fn view_account(
-    cookies: CookieJar,
-) -> Result<(CookieJar, Json<ViewAccount>), StatusCode> {
+pub async fn view_account(cookies: Cookies) -> Result<Json<ViewAccount>, StatusCode> {
     // Database Connection
     let connection = establish_connection().await;
 
     // Get Username from Session ID in Cookie and push it to Username
-    let Username = get_session(cookies.to_owned()).await;    
+    let Username = get_session(cookies.to_owned()).await;
 
     // Querys's the Account table, Select Username, Email, DisplayName, Avatar, ProfileMetadata and Description
 
@@ -151,17 +154,16 @@ pub async fn view_account(
     let AccountResult = Json(view.unwrap());
 
     // returns CookieJar, account details as json
-    return Ok((cookies, AccountResult));
+    return Ok(AccountResult);
 }
 
 #[derive(Deserialize)]
 pub struct AccountCard {
-    username: String
+    username: String,
 }
 
 #[debug_handler]
 pub async fn account_card(Json(username): Json<AccountCard>) -> Json<String> {
-
     // Database Connection
     let connection = establish_connection().await;
 
@@ -179,10 +181,12 @@ pub async fn account_card(Json(username): Json<AccountCard>) -> Json<String> {
         .into_model::<CardAccount>()
         .one(&connection)
         .await
-        .unwrap().unwrap();
+        .unwrap()
+        .unwrap();
     // http://localhost:8000/api/media/file/yBV6fYOyoGsMvw30TtBs/yBV6fYOyoGsMvw30TtBs_1280.webm
 
-    let avatar_url = "http://".to_owned() + &config.1 + "/api/media/file/" + &card.avatar.replace("\"", "");
+    let avatar_url =
+        "http://".to_owned() + &config.1 + "/api/media/file/" + &card.avatar.replace("\"", "");
 
     let view_card = json!({
         "Username": card.username.as_str(),
@@ -195,7 +199,6 @@ pub async fn account_card(Json(username): Json<AccountCard>) -> Json<String> {
     let CardResult = Json(view_card.to_string());
 
     return CardResult;
-
 }
 
 enum AccountUpdateValue {
@@ -205,14 +208,17 @@ enum AccountUpdateValue {
 
 #[debug_handler]
 pub async fn update_avatar(
-    cookies: CookieJar,
+    cookies: Cookies,
     TypedMultipart(AvatarUpload { image }): TypedMultipart<AvatarUpload>,
 ) {
     // Database connection
     let connection = establish_connection().await;
 
     // Get Username from Session ID in Cookie
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
 
     let account: Option<v_account::Model> = v_account::Entity::find()
         .filter(v_account::Column::Username.eq(Username.to_owned()))
@@ -234,23 +240,23 @@ pub async fn update_avatar(
 
     account.avatar = Set(Some(AvatarUrlString.as_str().to_string()));
 
-    let account: v_account::Model = account.update(&connection).await.unwrap();   
-    
-
+    let account: v_account::Model = account.update(&connection).await.unwrap();
 }
 
-
 pub async fn update_account(
-    cookies: CookieJar,    
+    cookies: Cookies,
     Json(data): Json<AccountUpdate>,
-) -> Result<(CookieJar, Json<String>), StatusCode> {
+) -> Result<Json<String>, StatusCode> {
     let mut Account: HashMap<String, AccountUpdateValue> = HashMap::new();
 
     // Database connection
     let connection = establish_connection().await;
 
     // Get Username from Session ID in Cookie
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
 
     let account: Option<v_account::Model> = v_account::Entity::find()
         .filter(v_account::Column::Username.eq(Username))
@@ -277,61 +283,63 @@ pub async fn update_account(
         let parsed_hash = PasswordHash::new(&password_hash).unwrap();
 
         if parsed_hash.to_string() == password {
-            return Ok((cookies, Json("New Password Equals Current Password".to_string())));
+            return Ok(Json("New Password Equals Current Password".to_string()));
         }
         // verifys the password hash is ok then run the code with the else if statement
-        else if argon2.verify_password(Password.as_bytes(), &parsed_hash).is_ok() {
+        else if argon2
+            .verify_password(Password.as_bytes(), &parsed_hash)
+            .is_ok()
+        {
             let UpdatedPassword = parsed_hash.to_string();
             account.password = Set(UpdatedPassword);
         }
     }
 
     if data.email.is_some() {
-       let email = account.email.unwrap();
-       let Email = data.email.unwrap();
+        let email = account.email.unwrap();
+        let Email = data.email.unwrap();
 
-       if Email == email {
-        return Ok((cookies, Json("New Email Equals Current Email".to_string())));
-       }
-
-       else {
-         account.email = Set(Email);
-       }       
+        if Email == email {
+            return Ok(Json("New Email Equals Current Email".to_string()));
+        } else {
+            account.email = Set(Email);
+        }
     }
 
     if data.display_name.is_some() {
-       let display_name = account.display_name.unwrap();
-       let Display_name = data.display_name.unwrap();
+        let display_name = account.display_name.unwrap();
+        let Display_name = data.display_name.unwrap();
 
-       if Display_name == display_name {
-        return Ok((cookies, Json("New Display Name Equals Current Display Name".to_string())));
-       }
-
-       else {
-         account.display_name = Set(Display_name);
-       }  
-    }
-
-    else {
-        Account.insert("Display_name".to_string(), AccountUpdateValue::String("".to_string()));
+        if Display_name == display_name {
+            return Ok(Json(
+                "New Display Name Equals Current Display Name".to_string(),
+            ));
+        } else {
+            account.display_name = Set(Display_name);
+        }
+    } else {
+        Account.insert(
+            "Display_name".to_string(),
+            AccountUpdateValue::String("".to_string()),
+        );
     }
 
     if data.description.is_some() {
-       let description = account.description.unwrap().unwrap();
-       let Description = data.description.unwrap();
+        let description = account.description.unwrap().unwrap();
+        let Description = data.description.unwrap();
 
-       if Description == description {
-        return Ok((cookies, Json("New Description Equals Current Description".to_string())));
-       }
-
-       else {
-         account.description = Set(Some(Description));
-       }  
+        if Description == description {
+            return Ok(Json(
+                "New Description Equals Current Description".to_string(),
+            ));
+        } else {
+            account.description = Set(Some(Description));
+        }
     }
 
     let account: v_account::Model = account.update(&connection).await.unwrap();
 
     let AccountResult = Json("Success".to_string());
 
-    return Ok((cookies, AccountResult));
+    return Ok(AccountResult);
 }

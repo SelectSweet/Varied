@@ -7,45 +7,41 @@ pub struct BiscuitKey {
 }
 
 pub async fn create_key(username: String) {
+    let connection = establish_connection().await;
 
-   let connection = establish_connection().await;
+    let Key = KeyPair::new();
+    let PrKey = Key.private();
+    let PuKey = Key.public();
+    let PrivateBytesString = PrKey.to_bytes().to_owned().to_vec();
 
-   let Key = KeyPair::new();
-   let PrKey = Key.private();
-   let PuKey = Key.public();
-   let PrivateBytesString = PrKey.to_bytes().to_owned().to_vec();
-   
-   let KeyInsert = v_biscuitkey::ActiveModel {
-       key: sea_orm::ActiveValue::Set(PrivateBytesString),
-       username: sea_orm::ActiveValue::Set(username),
-   };
+    let KeyInsert = v_biscuitkey::ActiveModel {
+        key: ActiveValue::Set(PrivateBytesString),
+        username: ActiveValue::Set(username),
+    };
 
-   Insert::one(KeyInsert).exec(&connection).await.unwrap();
+    Insert::one(KeyInsert).exec(&connection).await.unwrap();
 }
 
 pub async fn get_key(username: String) -> Vec<u8> {
-   let connection = establish_connection().await;
-   
-   let Key = v_biscuitkey::Entity::find().filter(
-    v_biscuitkey::Column::Username.eq(username),
-   )
-   .columns([
-    v_biscuitkey::Column::Username,
-    v_biscuitkey::Column::Key
-   ])
-   //.into_model::<BiscuitKey>()
-   .one(&connection)
-   .await
-   .unwrap().unwrap();
+    let connection = establish_connection().await;
 
-   return Key.key
+    let Key = v_biscuitkey::Entity::find()
+        .filter(v_biscuitkey::Column::Username.eq(username))
+        .columns([v_biscuitkey::Column::Username, v_biscuitkey::Column::Key])
+        //.into_model::<BiscuitKey>()
+        .one(&connection)
+        .await
+        .unwrap()
+        .unwrap();
+
+    return Key.key;
 }
-
 
 pub async fn create_token(username: String) -> Biscuit {
     let operation = "Write";
     let key = get_key(username.to_owned()).await;
-    let mut authority = biscuit!(r#"
+    let mut authority = biscuit!(
+        r#"
     user({username});
 
     right({username}, "AllMediaUpload", "Write");
@@ -53,29 +49,41 @@ pub async fn create_token(username: String) -> Biscuit {
     right({username}, "Follow", "Read");
     right({username}, "Follow", "Write");
 
-    "#);
+    "#
+    );
 
     let Pair = KeyPair::from(&PrivateKey::from_bytes(&key).unwrap());
     return authority.build(&Pair).unwrap();
 }
 
+pub async fn AllMediaVerify(
+    bis: Biscuit,
+    username: String,
+    MediaUsername: String,
+    MediaID: String,
+) -> Authorizer {
+    let key = get_key(username).await;
+    let RootKey = KeyPair::from(&PrivateKey::from_bytes(&key).unwrap());
+    let biscuit = Biscuit::from_base64(bis.to_base64().unwrap(), RootKey.public()).unwrap();
 
-pub async fn AllMediaVerify(bis: Biscuit, username: String, MediaUsername: String, MediaID: String) -> Authorizer {
-      let key = get_key(username).await;
-      let RootKey = KeyPair::from(&PrivateKey::from_bytes(&key).unwrap());
-      let biscuit = Biscuit::from_base64(bis.to_base64().unwrap(), RootKey.public()).unwrap();
-
-      let auth = authorizer!(r#"
+    let auth = authorizer!(
+        r#"
           resource({MediaID});
           operation("Write");
 
           allow if right("AllMediaUpload", "Write");
-      "#);
+      "#
+    );
 
-      return auth;
+    return auth;
 }
 
-pub async fn VerifyAllMedia(Username: String, cookies: CookieJar, MediaUsername: String, MediaID: String) -> (Biscuit, Authorizer) {
+pub async fn VerifyAllMedia(
+    Username: String,
+    cookies: Cookies,
+    MediaUsername: String,
+    MediaID: String,
+) -> (Biscuit, Authorizer) {
     let Key = get_key(Username.to_owned()).await;
 
     let ID = cookies.get("id").unwrap().to_string();
@@ -89,16 +97,18 @@ pub async fn VerifyAllMedia(Username: String, cookies: CookieJar, MediaUsername:
 
 pub async fn FeedVerify(bis: Biscuit, username: String) -> Authorizer {
     let key = get_key(username.to_owned()).await;
-      let RootKey = KeyPair::from(&PrivateKey::from_bytes(&key).unwrap());
-      let biscuit = Biscuit::from_base64(bis.to_base64().unwrap(), RootKey.public()).unwrap();
+    let RootKey = KeyPair::from(&PrivateKey::from_bytes(&key).unwrap());
+    let biscuit = Biscuit::from_base64(bis.to_base64().unwrap(), RootKey.public()).unwrap();
 
-      let auth = authorizer!(r#"
+    let auth = authorizer!(
+        r#"
           resource("Feed");
           operation("Read");
 
           allow if user({username});
           allow if right("Feed", "Read");
-      "#);
+      "#
+    );
 
-      return auth;
+    return auth;
 }

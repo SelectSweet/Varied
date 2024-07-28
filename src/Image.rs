@@ -13,7 +13,7 @@ pub struct ImageUpload {
 }
 
 pub async fn PushImage(Path: String, PublicID: String, images: String, op: Operator) {
-    let image = fs::read(Path).unwrap(); 
+    let image = fs::read(Path).unwrap();
     let to = PublicID.as_str().to_owned() + "/" + &images;
     op.write(&to, image).await.unwrap();
 }
@@ -30,7 +30,7 @@ pub async fn ProcessImages(
     username: String,
     poster: bool,
     avatar: bool,
-    cookies: CookieJar,
+    cookies: Cookies,
 ) -> Value {
     let name = image.metadata.file_name.unwrap();
     let filetype = image.metadata.content_type.unwrap();
@@ -42,17 +42,29 @@ pub async fn ProcessImages(
         .replace("'", "")
         .replace("\"", "");
 
-    details.insert("Ids".to_owned(), Collection::CollectionValues::String(PublicID.to_owned()));
-    details.insert("Type".to_owned(), Collection::CollectionValues::String("Image".to_string()));
+    details.insert(
+        "Ids".to_owned(),
+        Collection::CollectionValues::String(PublicID.to_owned()),
+    );
+    details.insert(
+        "Type".to_owned(),
+        Collection::CollectionValues::String("Image".to_string()),
+    );
 
     let connection = establish_connection().await;
 
     if CollectionId.is_some() {
-        details.insert("Collection_Id".to_owned(), Collection::CollectionValues::String(CollectionId.unwrap()));
+        details.insert(
+            "Collection_Id".to_owned(),
+            Collection::CollectionValues::String(CollectionId.unwrap()),
+        );
     }
 
     if addtoalbum == true {
-        details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
+        details.insert(
+            "AddToAlbum".to_owned(),
+            Collection::CollectionValues::String(true.to_string()),
+        );
     }
 
     let mut description = String::new();
@@ -79,18 +91,26 @@ pub async fn ProcessImages(
 
     let op = get_dal_op().await.unwrap();
 
-    std::fs::create_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+    std::fs::create_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned())
+        .unwrap();
 
     // gets the current datetime
     let now = Utc::now();
-
 
     let mut Paths: Vec<String> = Vec::new();
     let mut images = Vec::new();
 
     images.push(PublicID.as_str().to_owned() + "_High.webp");
 
-    Paths.push(Process.to_owned() + "/" + &ImageBucket + "/" + PublicID.to_owned().as_str() + "/" + images[0].as_str());   
+    Paths.push(
+        Process.to_owned()
+            + "/"
+            + &ImageBucket
+            + "/"
+            + PublicID.to_owned().as_str()
+            + "/"
+            + images[0].as_str(),
+    );
 
     // Paths.push(
     //     process.to_owned() + "/" + &ImageBucket + "/" + PublicID.to_owned().as_str() + "/" + images[0].as_str(),
@@ -101,14 +121,13 @@ pub async fn ProcessImages(
 
     let mut UploadPath: Vec<String> = Vec::new();
 
-    UploadPath.push(PublicID.as_str().to_owned()  + "/" + &images[0]);
+    UploadPath.push(PublicID.as_str().to_owned() + "/" + &images[0]);
     // UploadPath.push(PublicID.as_str().to_owned()  + "/" + &images[1]);
     // UploadPath.push(PublicID.as_str().to_owned()  + "/" + &images[2]);
 
     let oper = op.0;
-    
-    if addtoalbum == true {        
 
+    if addtoalbum == true {
         FfmpegCommand::new()
             .input(image_path)
             .hide_banner()
@@ -118,7 +137,6 @@ pub async fn ProcessImages(
             .unwrap()
             .iter()
             .expect("Image Not comverted");
-
 
         let properties = json!({
             "Poster": false,
@@ -145,9 +163,18 @@ pub async fn ProcessImages(
 
         let collection = add_to_collection(details, cookies).await;
 
-        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;                
-    
-        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+        PushImage(
+            Paths[0].to_owned(),
+            PublicID.to_owned(),
+            images[0].to_owned(),
+            oper,
+        )
+        .await;
+
+        std::fs::remove_dir_all(
+            Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned(),
+        )
+        .unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -156,8 +183,7 @@ pub async fn ProcessImages(
         });
 
         return result;
-    } else if addtocollection == true && addtoalbum == false {        
-
+    } else if addtocollection == true && addtoalbum == false {
         FfmpegCommand::new()
             .input(image_path)
             .hide_banner()
@@ -168,11 +194,10 @@ pub async fn ProcessImages(
             .iter()
             .expect("Image Not comverted");
 
-
         let properties = json!({
             "Poster": false,
             "Avatar": false,
-            "Album": true     
+            "Album": true
         });
 
         let ImageStorageURL = ImageStorageUrl + "/" + &images[0];
@@ -196,9 +221,18 @@ pub async fn ProcessImages(
 
         let collection = add_to_collection(details, cookies).await;
 
-        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;                
-    
-        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+        PushImage(
+            Paths[0].to_owned(),
+            PublicID.to_owned(),
+            images[0].to_owned(),
+            oper,
+        )
+        .await;
+
+        std::fs::remove_dir_all(
+            Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned(),
+        )
+        .unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -207,8 +241,7 @@ pub async fn ProcessImages(
         });
 
         return result;
-    } else if addtocollection == true && addtoalbum == false {        
-
+    } else if addtocollection == true && addtoalbum == false {
         FfmpegCommand::new()
             .input(image_path)
             .hide_banner()
@@ -218,7 +251,7 @@ pub async fn ProcessImages(
             .unwrap()
             .iter()
             .expect("Image Not comverted");
-        
+
         let properties = json!({
             "Poster": false,
             "Album": false,
@@ -244,10 +277,18 @@ pub async fn ProcessImages(
 
         let collection = add_to_collection(details, cookies).await;
 
-        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await; 
-         
+        PushImage(
+            Paths[0].to_owned(),
+            PublicID.to_owned(),
+            images[0].to_owned(),
+            oper,
+        )
+        .await;
 
-        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+        std::fs::remove_dir_all(
+            Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned(),
+        )
+        .unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -257,7 +298,6 @@ pub async fn ProcessImages(
 
         return result;
     } else if poster == true {
-
         FfmpegCommand::new()
             .input(image_path)
             .hide_banner()
@@ -292,10 +332,18 @@ pub async fn ProcessImages(
 
         let collection = add_to_collection(details, cookies).await;
 
-        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await; 
-         
+        PushImage(
+            Paths[0].to_owned(),
+            PublicID.to_owned(),
+            images[0].to_owned(),
+            oper,
+        )
+        .await;
 
-        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+        std::fs::remove_dir_all(
+            Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned(),
+        )
+        .unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -305,10 +353,7 @@ pub async fn ProcessImages(
         });
 
         return result;
-    }
-
-    else if avatar == true {
-
+    } else if avatar == true {
         FfmpegCommand::new()
             .input(image_path)
             .hide_banner()
@@ -346,9 +391,18 @@ pub async fn ProcessImages(
 
         //let PosterUrl = object["Endpoint"].to_string() + "/" + &to;
 
-        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;           
-    
-        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+        PushImage(
+            Paths[0].to_owned(),
+            PublicID.to_owned(),
+            images[0].to_owned(),
+            oper,
+        )
+        .await;
+
+        std::fs::remove_dir_all(
+            Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned(),
+        )
+        .unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -368,7 +422,6 @@ pub async fn ProcessImages(
     }
 
     if addtocollection == false && poster == false {
-
         FfmpegCommand::new()
             .input(image_path)
             .hide_banner()
@@ -402,9 +455,18 @@ pub async fn ProcessImages(
 
         let image: v_media::Model = image.insert(&connection).await.unwrap();
 
-        PushImage(Paths[0].to_owned(), PublicID.to_owned(), images[0].to_owned(), oper).await;  
+        PushImage(
+            Paths[0].to_owned(),
+            PublicID.to_owned(),
+            images[0].to_owned(),
+            oper,
+        )
+        .await;
 
-        std::fs::remove_dir_all(Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned()).unwrap();
+        std::fs::remove_dir_all(
+            Process.to_owned() + "/" + &ImageBucket + "/" + &PublicID.to_owned(),
+        )
+        .unwrap();
 
         let result = json!({
             "Result": "Success",
@@ -424,7 +486,7 @@ pub async fn ProcessImages(
 
 #[debug_handler]
 pub async fn UploadImage(
-    cookies: CookieJar,
+    cookies: Cookies,
     Query(details): Query<HashMap<String, String>>,
     TypedMultipart(ImageUpload {
         image,
@@ -435,8 +497,6 @@ pub async fn UploadImage(
         title,
     }): TypedMultipart<ImageUpload>,
 ) -> Json<String> {
-
-    
     let Username = get_session(cookies.clone())
         .await
         .replace("'", "")
@@ -457,7 +517,6 @@ pub async fn UploadImage(
         cookies,
     )
     .await;
-
 
     return Json(image.to_string());
 }

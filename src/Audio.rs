@@ -42,7 +42,7 @@ pub struct AudioUpload {
 
 #[debug_handler]
 pub async fn UploadAudio(
-    cookies: CookieJar,
+    cookies: Cookies,
     TypedMultipart(AudioUpload {
         audio,
         poster,
@@ -50,11 +50,10 @@ pub async fn UploadAudio(
         addtoalbum,
         Description,
         CollectionId,
-        title
+        title,
     }): TypedMultipart<AudioUpload>,
-) -> Result<(CookieJar, Json<String>), StatusCode> {
+) -> Result<Json<String>, StatusCode> {
     let connection = establish_connection().await;
-
 
     let UID = Uuid::new_v4().to_string();
     let ID = UID.as_str();
@@ -63,7 +62,10 @@ pub async fn UploadAudio(
     let Process = object["Process"].to_owned();
     let AudioBucket = object["Name"].to_owned();
 
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
 
     let name = audio.metadata.file_name.unwrap();
     let filetype = audio.metadata.content_type.unwrap();
@@ -71,7 +73,8 @@ pub async fn UploadAudio(
     let PublicID = make_sqid(random_nums(12).await);
     let mut details: HashMap<String, CollectionValues> = HashMap::new();
 
-    std::fs::create_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
+    std::fs::create_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned())
+        .unwrap();
 
     let op = get_dal_op().await.unwrap();
 
@@ -80,8 +83,15 @@ pub async fn UploadAudio(
 
     Audios.push(PublicID.as_str().to_owned() + "_High.flac");
 
-
-    Paths.push(Process.to_owned() + "/" + &AudioBucket + "/" + PublicID.to_owned().as_str() + "/" + Audios[0].as_str());
+    Paths.push(
+        Process.to_owned()
+            + "/"
+            + &AudioBucket
+            + "/"
+            + PublicID.to_owned().as_str()
+            + "/"
+            + Audios[0].as_str(),
+    );
     // Paths.push(
     //     process.to_owned() + "/" + &AudioBucket + "/" + ID + "/" + ID + "-.flac",
     // );
@@ -91,7 +101,7 @@ pub async fn UploadAudio(
 
     let mut UploadPath: Vec<String> = Vec::new();
 
-    UploadPath.push(PublicID.as_str().to_owned()  + "/" + &Audios[0]);
+    UploadPath.push(PublicID.as_str().to_owned() + "/" + &Audios[0]);
     // UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Audios[1]);
     // UploadPath.push(PublicId.as_str().to_owned()  + "/" + &Audios[2]);
 
@@ -100,11 +110,17 @@ pub async fn UploadAudio(
     }
 
     if CollectionId.is_some() {
-        details.insert("Collection_Id".to_owned(), Collection::CollectionValues::String(CollectionId.to_owned().unwrap()));
+        details.insert(
+            "Collection_Id".to_owned(),
+            Collection::CollectionValues::String(CollectionId.to_owned().unwrap()),
+        );
     }
 
     if addtoalbum == true {
-        details.insert("AddToAlbum".to_owned(), Collection::CollectionValues::String(true.to_string()));
+        details.insert(
+            "AddToAlbum".to_owned(),
+            Collection::CollectionValues::String(true.to_string()),
+        );
     }
 
     audio.contents.persist(path.to_owned()).unwrap();
@@ -124,12 +140,12 @@ pub async fn UploadAudio(
                 addtoalbum: false,
                 Description: None,
                 CollectionId: None,
-                title: Some(Title.to_owned())
+                title: Some(Title.to_owned()),
             }),
             Username.to_owned(),
             true,
             false,
-            cookies.to_owned()
+            cookies.to_owned(),
         )
         .await;
 
@@ -138,8 +154,6 @@ pub async fn UploadAudio(
         for u in PosterUrls {
             PosterVec.push(u.as_str().unwrap().to_string())
         }
-
-        
     }
 
     if addtocollection == false {
@@ -162,12 +176,11 @@ pub async fn UploadAudio(
             properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
-    
+
         insert_details.insert(&connection).await.unwrap();
     }
 
     if addtocollection == true && CollectionId.is_some() {
-
         let properties = json!({
             "Poster": false,
             "Album": false,
@@ -188,28 +201,26 @@ pub async fn UploadAudio(
             properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
-    
+
         insert_details.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details, cookies.to_owned()).await;
-    
+
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
             "Collection_Publicid": collection["Publicid"]
         });
-    
-        return Ok((cookies, Json(result.to_string())));
+
+        return Ok(Json(result.to_string()));
     }
 
     if addtoalbum == true && CollectionId.is_some() && addtocollection == false {
-
         let properties = json!({
             "Poster": false,
             "Album": true,
             "Avatar": false
         });
-        
 
         let insert_details = v_media::ActiveModel {
             id: ActiveValue::Set(ID.to_owned()),
@@ -225,28 +236,26 @@ pub async fn UploadAudio(
             properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
-    
+
         insert_details.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details, cookies.to_owned()).await;
-    
+
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
             "Collection_Publicid": collection["Publicid"]
         });
-    
-        return Ok((cookies, Json(result.to_string())));
+
+        return Ok(Json(result.to_string()));
     }
 
     if addtoalbum == true && CollectionId.is_some() && addtocollection == false {
-
         let properties = json!({
             "Poster": false,
             "Album": true,
             "Avatar": false
         });
-        
 
         let insert_details = v_media::ActiveModel {
             id: ActiveValue::Set(ID.to_owned()),
@@ -262,18 +271,18 @@ pub async fn UploadAudio(
             properties: ActiveValue::Set(properties),
             state: ActiveValue::Set(Media::MediaState::Uploading.to_string()),
         };
-    
+
         insert_details.insert(&connection).await.unwrap();
 
         let collection = add_to_collection(details, cookies.to_owned()).await;
-    
+
         let result = json!({
             "Result": "Success",
             "Publicid": PublicID,
             "Collection_Publicid": collection["Publicid"]
         });
-    
-        return Ok((cookies, Json(result.to_string())));
+
+        return Ok(Json(result.to_string()));
     }
 
     let mut total_progress = String::new();
@@ -306,7 +315,7 @@ pub async fn UploadAudio(
                     Update_Progress(PublicID.to_owned(), total_progress.to_owned());
             }
         });
-   
+
     // let mut AudioInt = 0;
 
     // for p in Paths {
@@ -319,12 +328,12 @@ pub async fn UploadAudio(
 
     //     AudioInt = AudioInt + 1;
     // }
-     
+
     let from = Paths[0].to_owned();
     let FromPath = Path::new(from.as_str());
     let to = (PublicID.as_str().to_owned() + "/" + &Audios[0]);
     let audio: Vec<u8> = fs::read(FromPath.to_owned()).unwrap();
-    op.0.write(&to, audio).await.unwrap();  
+    op.0.write(&to, audio).await.unwrap();
 
     //std::fs::remove_dir_all(Process.to_owned() + "/" + &AudioBucket + "/" + &PublicID.to_owned()).unwrap();
 
@@ -347,5 +356,5 @@ pub async fn UploadAudio(
         "PublicID": PublicID
     });
 
-    return Ok((cookies, Json(results.to_string())));
+    return Ok(Json(results.to_string()));
 }

@@ -1,4 +1,3 @@
-
 use super::*;
 
 #[derive(Deserialize)]
@@ -6,7 +5,7 @@ pub struct Config {
     pub database: database,
     pub Object: Object,
     pub Core: Core,
-    pub S3: ConfigS3
+    pub S3: ConfigS3,
 }
 
 #[derive(Deserialize)]
@@ -15,7 +14,6 @@ pub struct Core {
     pub front_end_url: Url,
     pub main_url: String,
 }
-
 
 #[derive(Deserialize)]
 pub struct database {
@@ -26,7 +24,7 @@ pub struct database {
 pub struct Object {
     pub name: String,
     pub endpoint: String,
-    pub process: String
+    pub process: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -36,11 +34,10 @@ pub struct ConfigS3 {
     pub region: String,
     pub endpoint: String,
     pub access_key_id: String,
-    pub secret_access_key: String
+    pub secret_access_key: String,
 }
 
 pub async fn establish_connection() -> DatabaseConnection {
-
     // Reads config file
     let database_url = File::open("varied.toml");
 
@@ -59,77 +56,117 @@ pub async fn establish_connection() -> DatabaseConnection {
     let connection = Database::connect(options).await.unwrap();
 
     return connection;
-
 }
 
-const CUSTOM_ENGINE: engine::GeneralPurpose = engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
+const CUSTOM_ENGINE: engine::GeneralPurpose =
+    engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
 
 pub fn encode_base64_id(id: String) -> String {
     let baseid = CUSTOM_ENGINE.encode(id);
-    return baseid
+    return baseid;
 }
 
 pub fn make_sqid(nums: Vec<u64>) -> String {
     let sqid = Sqids::new(Some(Options::new(
-        Some("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".to_string()), 
-        Some(5), 
-        None
-    ))).unwrap();
+        Some("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789".to_string()),
+        Some(5),
+        None,
+    )))
+    .unwrap();
 
     let id = sqid.encode(&nums).unwrap();
 
     return id;
-
-
 }
 
 pub async fn random_nums(range: u8) -> Vec<u64> {
     const CHARSET: &[u8] = b"0123456789";
     let mut rng = thread_rng();
 
-    let rand_nums: Vec<u64> = (0..range).map(
-        |_| {
+    let rand_nums: Vec<u64> = (0..range)
+        .map(|_| {
             let rand_s = rng.gen_range(0..CHARSET.len());
             CHARSET[rand_s] as u64
-        }
-    ).collect();
+        })
+        .collect();
 
-    return rand_nums
+    return rand_nums;
 }
-
 
 pub async fn random_alpha(range: u8) -> String {
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     let mut rng = thread_rng();
 
-    let rand_string: String = (0..range).map(
-        |_| {
+    let rand_string: String = (0..range)
+        .map(|_| {
             let rand_s = rng.gen_range(0..CHARSET.len());
             CHARSET[rand_s] as char
-        }
-    ).collect();
+        })
+        .collect();
 
-    return rand_string
+    return rand_string;
 }
 
-
-
-pub async fn get_session(cookies: CookieJar) -> String {
-
+pub async fn get_session(cookies: Cookies) -> String {
     let connection = establish_connection().await;
-    let session_id = cookies.get("id").unwrap().to_string().replace("id=", "");
+
+    let key = SessionKey.get().unwrap();
+    let tkey = Key::from(key);
+    let private_cookies = cookies.private(&tkey);
+
+    let session_id = private_cookies
+        .get("id")
+        .unwrap()
+        .to_string()
+        .replace("id=", "");
 
     let session = v_session::Entity::find_by_id(session_id.clone())
-    .into_json()
-    .one(&connection).await.unwrap().unwrap()
-    ;
+        .into_json()
+        .one(&connection)
+        .await
+        .unwrap()
+        .unwrap();
 
-    let Username = session["username"].to_string();    
+    let Username = session["username"].to_string();
 
     return Username;
 }
 
+pub async fn Create_Tower_Key(username: String) -> String {
+    let connection = establish_connection().await;
+    let Tower_Key = Key::generate().to_owned().master().to_owned();
 
+    let Key_Insert = v_towersession::ActiveModel {
+        key: ActiveValue::set(Tower_Key),
+        username: ActiveValue::set(username),
+    };
+
+    let Key_Insert_Result = Insert::one(Key_Insert).exec(&connection).await;
+
+    if Key_Insert_Result.is_err() {
+        return "Error".to_string();
+    } else {
+        return "Success".to_string();
+    }
+}
+
+pub async fn Get_Tower_Key(username: String) -> Vec<u8> {
+    let connection = establish_connection().await;
+
+    let Key = v_towersession::Entity::find()
+        .filter(v_towersession::Column::Username.eq(username))
+        .columns([
+            v_towersession::Column::Username,
+            v_towersession::Column::Key,
+        ])
+        //.into_model::<BiscuitKey>()
+        .one(&connection)
+        .await
+        .unwrap()
+        .unwrap();
+
+    return Key.key;
+}
 
 async fn s3_builder(config: String) -> S3 {
     let mut builder = S3::default();
@@ -153,8 +190,7 @@ async fn s3_builder(config: String) -> S3 {
     return builder;
 }
 
-pub async fn get_dal_op() -> Result<(Operator, String, String), String>  {
-
+pub async fn get_dal_op() -> Result<(Operator, String, String), String> {
     let Config = File::open("varied.toml");
 
     let mut cstring = String::new();
@@ -169,12 +205,9 @@ pub async fn get_dal_op() -> Result<(Operator, String, String), String>  {
         let builder = s3_builder(cstring).await;
         let op: Operator = Operator::new(builder).unwrap().finish();
         return Ok((op, ObjectEndpoint, ObjectProccess));
+    } else {
+        return Err("Invaild Object Settings".to_string());
     }
-
-    else {
-        return Err("Invaild Object Settings".to_string())
-    }
-        
 }
 
 pub fn get_object_config() -> HashMap<String, String> {
@@ -197,9 +230,8 @@ pub fn get_object_config() -> HashMap<String, String> {
     Config.insert("Endpoint".to_string(), endpoint.to_string());
     Config.insert("Process".to_string(), process);
 
-    
     // Returns Config Hashmap
-    return Config   
+    return Config;
 }
 
 pub fn get_core_config() -> (Url, String, usize) {

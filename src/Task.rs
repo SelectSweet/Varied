@@ -1,6 +1,6 @@
 use super::*;
 
-pub async fn Create_Progress(id: String, Username: String, Type: String, Progress: String)  {
+pub async fn Create_Progress(id: String, Username: String, Type: String, Progress: String) {
     let connection = establish_connection().await;
     let progress = v_task::ActiveModel {
         id: ActiveValue::Set(id),
@@ -12,7 +12,7 @@ pub async fn Create_Progress(id: String, Username: String, Type: String, Progres
     let progress: v_task::Model = progress.insert(&connection).await.unwrap();
 }
 
-pub async fn Update_Progress(PublicId: String, progress: String)  {
+pub async fn Update_Progress(PublicId: String, progress: String) {
     let connection = establish_connection().await;
 
     let task: Option<v_task::Model> = v_task::Entity::find_by_id(&PublicId.to_owned())
@@ -27,9 +27,7 @@ pub async fn Update_Progress(PublicId: String, progress: String)  {
     let task: v_task::Model = task.update(&connection).await.unwrap();
 }
 
-
-
-pub async fn list_tasks(cookies: CookieJar) -> Result<(CookieJar, Json<String>), StatusCode> {
+pub async fn list_tasks(cookies: Cookies) -> Result<Json<String>, StatusCode> {
     // Database Connection
     let connection = establish_connection().await;
 
@@ -41,15 +39,12 @@ pub async fn list_tasks(cookies: CookieJar) -> Result<(CookieJar, Json<String>),
     let tasks: Value = v_task::Entity::find()
         //.filter(v_task::Column::Username.eq(Username))
         //.columns([ v_task::Column::Id, v_task::Column::Progress, v_task::Column::Type, ])
-        .from_raw_sql(Statement::from_string(
-            DbBackend::Postgres,
-            TaskQuery,
-        ))
+        .from_raw_sql(Statement::from_string(DbBackend::Postgres, TaskQuery))
         .into_json()
         .one(&connection)
         .await
         .unwrap()
         .unwrap();
 
-    return Ok((cookies, Json(tasks.as_str().unwrap().to_string())));
+    return Ok(Json(tasks.as_str().unwrap().to_string()));
 }

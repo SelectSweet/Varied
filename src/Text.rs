@@ -26,7 +26,6 @@ fn word_count(Text: String) -> [i64; 3] {
     return results;
 }
 
-
 #[derive(TryFromMultipart, Deserialize)]
 pub struct Text {
     pub title: String,
@@ -45,15 +44,17 @@ pub struct DeleteText {
     pub PublicId: String,
 }
 
-
 pub async fn Create_Text(
-    cookies: CookieJar,
+    cookies: Cookies,
     headers: HeaderMap,
-    Json(data): Json<Text>
-) -> Result<(CookieJar, Json<String>), StatusCode> {
+    Json(data): Json<Text>,
+) -> Result<Json<String>, StatusCode> {
     let connection = establish_connection().await;
 
-    let Username = get_session(cookies.clone()).await.replace("'", "").replace("\"", "");
+    let Username = get_session(cookies.clone())
+        .await
+        .replace("'", "")
+        .replace("\"", "");
 
     let Title = data.title.to_string();
     let ID = Uuid::new_v4().to_string();
@@ -85,70 +86,62 @@ pub async fn Create_Text(
     // gets the current datetime
     let now = Utc::now();
 
-    //let mut poster: Vec<String> = Vec::new(); 
+    //let mut poster: Vec<String> = Vec::new();
     //poster.push(data.poster.unwrap()); // replace this with the poster function
 
-    let insert_details = v_media::ActiveModel { 
-        id: ActiveValue::Set(ID), 
-        publicid: ActiveValue::Set(PublicId), 
+    let insert_details = v_media::ActiveModel {
+        id: ActiveValue::Set(ID),
+        publicid: ActiveValue::Set(PublicId),
         title: ActiveValue::Set(Title),
-        mediatype: ActiveValue::Set(text_type), 
-        uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())), 
+        mediatype: ActiveValue::Set(text_type),
+        uploaded_at: ActiveValue::Set(DateTime::new(now.date_naive(), now.time())),
         username: ActiveValue::Set(Username),
-        description: ActiveValue::NotSet, 
-        chapters: ActiveValue::NotSet, 
+        description: ActiveValue::NotSet,
+        chapters: ActiveValue::NotSet,
         storagepathorurl: ActiveValue::NotSet,
         poster_storagepathorurl: ActiveValue::NotSet, // Change this to ActiveValue::Set(Some(poster)) when poster is fixed
-        properties: ActiveValue::Set(properties), 
-        state: ActiveValue::Set(Media::MediaState::Published.to_string()), 
+        properties: ActiveValue::Set(properties),
+        state: ActiveValue::Set(Media::MediaState::Published.to_string()),
     };
 
     insert_details.insert(&connection).await.unwrap();
 
-    return Ok((
-        cookies,
-        Json("Success".to_string())
-    ));
+    return Ok(Json("Success".to_string()));
 }
 
-pub async fn UpdateText(
-    cookies: CookieJar,
-    Json(data): Json<UpdateText>
-) -> Json<String> {
+pub async fn UpdateText(cookies: Cookies, Json(data): Json<UpdateText>) -> Json<String> {
     let connection = establish_connection().await;
     let id = data.PublicId;
 
     let mut Text = v_media::Entity::find()
-       .filter(v_media::Column::Publicid.eq(id.to_owned()))
-       .into_json()
-       .one(&connection).await.unwrap().unwrap();
+        .filter(v_media::Column::Publicid.eq(id.to_owned()))
+        .into_json()
+        .one(&connection)
+        .await
+        .unwrap()
+        .unwrap();
 
     let TextObject = Text.as_object_mut().unwrap();
 
-    let mut Properties = TextObject["properties"].to_owned();   
-
+    let mut Properties = TextObject["properties"].to_owned();
 
     if Some(id.to_owned()).is_some() && Some(data.body.to_owned()).is_some() {
-       Properties["body"] = json!(data.body.unwrap());
-       let Updated = format!("{} Has Been updated", id.to_owned());
-       return Json(Updated.to_string());
-    }
-
-    else {
-        return Json("An ID and Text Body are Required".to_string())
+        Properties["body"] = json!(data.body.unwrap());
+        let Updated = format!("{} Has Been updated", id.to_owned());
+        return Json(Updated.to_string());
+    } else {
+        return Json("An ID and Text Body are Required".to_string());
     }
 }
 
-pub async fn DeleteText(
-    cookies: CookieJar,
-    Json(data): Json<DeleteText>
-) {
+pub async fn DeleteText(cookies: Cookies, Json(data): Json<DeleteText>) {
     let connection = establish_connection().await;
     let id = data.PublicId;
     let mut Text = v_media::Entity::find()
-       .filter(v_media::Column::Publicid.eq(id.to_owned()))
-       .into_json()
-       .one(&connection).await.unwrap().unwrap();
-    
+        .filter(v_media::Column::Publicid.eq(id.to_owned()))
+        .into_json()
+        .one(&connection)
+        .await
+        .unwrap()
+        .unwrap();
 }
-
