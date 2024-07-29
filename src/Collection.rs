@@ -86,12 +86,12 @@ pub async fn add_to_collection(
                     serde_json::to_value(Video.to_string()).unwrap();
             }
             "Text" => {
-                let Video = collection["Properties"]["Text"].as_u64().unwrap() + 1;
-                collection["Properties"]["Text"] = serde_json::to_value(Video.to_string()).unwrap();
+                let Text = collection["Properties"]["Text"].as_u64().unwrap() + 1;
+                collection["Properties"]["Text"] = serde_json::to_value(Text.to_string()).unwrap();
             }
             "Note" => {
-                let Video = collection["Properties"]["Note"].as_u64().unwrap() + 1;
-                collection["Properties"]["Note"] = serde_json::to_value(Video.to_string()).unwrap();
+                let Note = collection["Properties"]["Note"].as_u64().unwrap() + 1;
+                collection["Properties"]["Note"] = serde_json::to_value(Note.to_string()).unwrap();
             }
             _ => {}
         }
