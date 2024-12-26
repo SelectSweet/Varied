@@ -35,7 +35,6 @@ pub struct Text {
 #[derive(Deserialize, Serialize)]
 pub struct UpdateText {
     pub PublicId: String,
-    pub title: Option<String>,
     pub body: Option<String>,
 }
 
@@ -111,22 +110,26 @@ pub async fn Create_Text(
 
 pub async fn UpdateText(cookies: Cookies, Json(data): Json<UpdateText>) -> Json<String> {
     let connection = establish_connection().await;
-    let id = data.PublicId;
+    let id = data.PublicId.to_owned();
 
-    let mut Text = v_media::Entity::find()
+    let Text = v_media::Entity::find()
         .filter(v_media::Column::Publicid.eq(id.to_owned()))
-        .into_json()
         .one(&connection)
         .await
-        .unwrap()
         .unwrap();
 
-    let TextObject = Text.as_object_mut().unwrap();
+    let mut Text: v_media::ActiveModel = Text.unwrap().into();
 
-    let mut Properties = TextObject["properties"].to_owned();
+    let mut Properties: serde_json::Map<String, Value> =
+        Text.properties.unwrap().as_object().unwrap().to_owned();
 
     if Some(id.to_owned()).is_some() && Some(data.body.to_owned()).is_some() {
         Properties["body"] = json!(data.body.unwrap());
+
+        Text.properties = Set(json!(Properties));
+
+        Text.update(&connection);
+
         let Updated = format!("{} Has Been updated", id.to_owned());
         return Json(Updated.to_string());
     } else {

@@ -11,15 +11,7 @@ members = [".", "migration", "entity"]
 [dependencies]
 migration = { path = "migration" }
 entity = { path = "entity" }
-sea-orm = { version = "0.12.12", features = [
-    "sqlx-postgres",
-    "runtime-tokio-rustls",
-    "macros",
-    "with-chrono",
-    "with-json",
-    "with-uuid",
-    "postgres-array",
-] }
+sea-orm = { version = "1.1.1", default-features = false, features = ["sqlx-postgres", "runtime-tokio-rustls", "macros", "with-chrono", "with-json", "with-uuid", "postgres-array"] }
 serde = { version = "1.0.192", features = ["derive"] }
 toml = { version = "0.8.8", features = ["parse"] }
 axum = { version = "0.7.3", features = [
@@ -51,3 +43,4 @@ axum_typed_multipart = "0.11.0"
 opendal = { version = "0.45.0", features = ["services-http"] }
 biscuit-auth = { version = "4.1.1", features = ["bwk"] }
 tower-cookies = { version = "0.10.0", features = ["private"] }
+moka = { version = "0.12.8", features = ["future"] }
