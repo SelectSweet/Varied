@@ -110,15 +110,12 @@ pub async fn random_alpha(range: u8) -> String {
 pub async fn get_session(cookies: Cookies) -> String {
     let connection = establish_connection().await;
 
-    let key = SessionKey.get().unwrap();
-    let tkey = Key::from(key);
-    let private_cookies = cookies.private(&tkey);
+    //let key = SessionKey.get().unwrap();
+    // let key = state.Key.get();
+    // let tkey = Key::from(key);
+    // let private_cookies = cookies.private(&tkey);
 
-    let session_id = private_cookies
-        .get("id")
-        .unwrap()
-        .to_string()
-        .replace("id=", "");
+    let session_id = cookies.get("id").unwrap().to_string().replace("id=", "");
 
     let session = v_session::Entity::find_by_id(session_id.clone())
         .into_json()

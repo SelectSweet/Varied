@@ -13,6 +13,7 @@ pub struct User {
 pub async fn login(
     cookies: Cookies,
     headers: HeaderMap,
+    State(state): State<Arc<SessionCache>>,
     Json(data): Json<User>,
 ) -> Result<Json<String>, StatusCode> {
     let connection = establish_connection().await;
@@ -53,24 +54,32 @@ pub async fn login(
 
             let Key = Get_Tower_Key(username.to_owned()).await;
 
-            SessionKey.set(Key.to_owned()).unwrap();
+            //SessionKey.set(Key.to_owned()).unwrap();
 
             let TowerKey = Key::from(&Key);
 
             let Session = cookies.private(&TowerKey);
 
-            let session_id = create_token(username.to_owned()).await.to_string();
+            let authority_id = create_token(username.to_owned()).await.to_string();
+
+            let SessionCookie = Cookie::new("id", authority_id.to_owned());
+
+            let c = Session.add(SessionCookie);
+
+            let session_id = cookies.get("id").unwrap().to_string().replace("id=", "");
 
             let session = v_session::ActiveModel {
                 session_id: ActiveValue::Set(session_id.to_owned()),
                 username: ActiveValue::Set(username.to_owned()),
+                authority: ActiveValue::Set(authority_id.to_string()),
             };
 
             session.insert(&connection).await.unwrap();
 
-            let SessionCookie = Cookie::new("id", session_id.to_owned());
-
-            let c = Session.add(SessionCookie);
+            state
+                .Key
+                .insert(session_id.to_owned(), Key.to_owned())
+                .await;
 
             return Ok(Json("Login successful".to_string()));
         } else {
@@ -82,10 +91,12 @@ pub async fn login(
     }
 }
 
-pub async fn logout(cookies: Cookies) -> Json<String> {
+pub async fn logout(cookies: Cookies, State(state): State<Arc<SessionCache>>) -> Json<String> {
     let connection = establish_connection().await;
 
-    let id = cookies.get("id").unwrap().to_string().replace("id=", "");
+    let id = cookies.list()[0].to_string().replace("id=", "");
+    //let id = cookie_id.to_string().replace("id=", "");
+    let mut Username = String::new();
 
     let drop_session: Option<v_session::Model> = v_session::Entity::find()
         .filter(v_session::Column::SessionId.eq(id))
@@ -95,7 +106,13 @@ pub async fn logout(cookies: Cookies) -> Json<String> {
 
     let drop_session: v_session::Model = drop_session.unwrap();
 
+    Username.push_str(drop_session.username.as_str());
+
     drop_session.delete(&connection).await.unwrap();
+
+    state.Key.invalidate(&Username).await;
+
+    cookies.list()[0].make_removal();
 
     return Json("Success".to_string());
 }

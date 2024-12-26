@@ -11,7 +11,7 @@ use sea_orm::{Condition, FromQueryResult};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqids::{Options, Sqids};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::{
     collections::HashMap,
     fmt,
@@ -25,12 +25,14 @@ use url::Url;
 use axum::{
     body::Body,
     debug_handler,
-    extract::{DefaultBodyLimit, Path as APath, Query},
+    extract::{DefaultBodyLimit, Path as APath, Query, State},
     http::{header, header::*, Method, StatusCode},
     response::IntoResponse,
     routing::{get, patch, post},
     Json, Router,
 };
+
+use moka::future::Cache;
 
 use tower_cookies::{Cookie, CookieManagerLayer, Cookies, Key};
 
@@ -71,7 +73,11 @@ use biscuit_auth::{
 };
 use sea_orm::Insert;
 
-static SessionKey: OnceLock<Vec<u8>> = OnceLock::new();
+//static SessionKey: Cache<String, Vec<u8>> = Cache::new(1);
+
+pub struct SessionCache {
+    Key: Cache<String, Vec<u8>>,
+}
 
 mod Account;
 mod Audio;
@@ -103,6 +109,8 @@ async fn main() {
     let core = get_core_config();
 
     let feed_cors_url = core.0.join("Feed").unwrap();
+
+    let SessionKey = Arc::new(SessionCache { Key: Cache::new(1) });
 
     // Cors Settings
     let origins = [
@@ -162,7 +170,8 @@ async fn main() {
         .route("/api/feed", get(Feed::feed))
         .route("/api/tasks", get(Task::list_tasks))
         .layer(cors)
-        .layer(CookieManagerLayer::new());
+        .layer(CookieManagerLayer::new())
+        .with_state(SessionKey);
 
     println!("listening on {}", core.1);
 
